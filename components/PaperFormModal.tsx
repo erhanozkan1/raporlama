@@ -382,7 +382,7 @@ export default function PaperFormModal({ isOpen, onClose, settings }: PaperFormM
                     </div>
                     <div className="col-span-3 p-1.5">
                       <span className="font-bold block text-[9px] text-slate-500 uppercase">Vardiya:</span>
-                      <span className="text-slate-800 font-semibold">[ ] 08-16 &nbsp; [ ] 16-24 &nbsp; [ ] 24-08</span>
+                      <span className="text-slate-800 font-semibold">[ ] 09-17 &nbsp; [ ] 17-01 &nbsp; [ ] Diğer</span>
                     </div>
                     <div className="col-span-3 p-1.5">
                       <span className="font-bold block text-[9px] text-slate-500 uppercase">Vardiya Amiri:</span>
@@ -525,23 +525,19 @@ export default function PaperFormModal({ isOpen, onClose, settings }: PaperFormM
                   {/* Personel Dağılımı */}
                   <div className="col-span-5 border border-slate-900">
                     <div className="bg-slate-800 text-white font-bold px-2 py-0.5 text-[9px] uppercase">
-                      4. Personel Dağılımı
+                      4. Vardiya Personeli
                     </div>
-                    <div className="p-1.5 space-y-1 text-[10px]">
-                      <div className="flex justify-between border-b border-dashed border-slate-300 pb-0.5">
-                        <span>Ocak Ergitme Ekibi:</span>
+                    <div className="p-2 space-y-1.5 text-[10px]">
+                      <div className="flex justify-between border-b border-dashed border-slate-300 pb-1">
+                        <span className="font-semibold text-slate-800">Fiili Çalışan Personel:</span>
                         <span className="font-mono font-bold">____ Kişi</span>
                       </div>
-                      <div className="flex justify-between border-b border-dashed border-slate-300 pb-0.5">
-                        <span>Kalıp & Maça Ekibi:</span>
+                      <div className="flex justify-between border-b border-dashed border-slate-300 pb-1">
+                        <span className="font-semibold text-rose-700">Eksik / İzinli Personel:</span>
                         <span className="font-mono font-bold">____ Kişi</span>
                       </div>
-                      <div className="flex justify-between border-b border-dashed border-slate-300 pb-0.5">
-                        <span>Bakım & Elektrik:</span>
-                        <span className="font-mono font-bold">____ Kişi</span>
-                      </div>
-                      <div className="flex justify-between font-bold pt-0.5 text-slate-950">
-                        <span>Vardiya Genel Toplam:</span>
+                      <div className="flex justify-between font-bold pt-1 text-slate-950">
+                        <span>Toplam Kadro:</span>
                         <span className="font-mono">____ Kişi</span>
                       </div>
                     </div>

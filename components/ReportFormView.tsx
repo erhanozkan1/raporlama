@@ -102,25 +102,18 @@ export default function ReportFormView({
   const [handoverJobs, setHandoverJobs] = useState<string>('');
   const [managerEvaluation, setManagerEvaluation] = useState<string>('');
 
-  // Vardiya Ekibi & Çalışma Saatleri (YENİ)
+  // Vardiya Ekibi & Çalışma Saatleri
   const [personnel, setPersonnel] = useState<ShiftPersonnel>({
     supervisorName: '',
     totalCount: 4,
     absentCount: 0,
-    breakdown: {
-      melters: 2,
-      molders: 1,
-      craneOperators: 1,
-      casters: 0,
-      maintenance: 0,
-      generalWorkers: 0,
-    },
+    breakdown: {},
     notes: '',
   });
 
   const [shiftHours, setShiftHours] = useState<ShiftHours>({
-    startTime: '08:00',
-    endTime: '16:00',
+    startTime: '09:00',
+    endTime: '17:00',
     plannedDurationHours: 8,
     breakDurationMinutes: 60,
     totalDowntimeMinutes: 0,
@@ -298,8 +291,8 @@ export default function ReportFormView({
         // Çalışma Saatleri Yükle
         if (existingReport.shiftHours) {
           setShiftHours({
-            startTime: existingReport.shiftHours.startTime || '08:00',
-            endTime: existingReport.shiftHours.endTime || '16:00',
+            startTime: existingReport.shiftHours.startTime || '09:00',
+            endTime: existingReport.shiftHours.endTime || '17:00',
             plannedDurationHours: existingReport.shiftHours.plannedDurationHours || 8,
             breakDurationMinutes: existingReport.shiftHours.breakDurationMinutes ?? 60,
             totalDowntimeMinutes: existingReport.shiftHours.totalDowntimeMinutes || 0,
@@ -331,12 +324,14 @@ export default function ReportFormView({
         if (settings?.furnaces) {
           settings.furnaces.forEach(f => {
             const exists = loadedRecords.some(r => r.furnaceId === f.id);
-            if (!exists) {
+            const status = getFurnaceStatusForDate(f, targetDate);
+            // Sadece fırın o tarihte aktifse (Kullanım Dışı DEĞİLSE) otomatik ekle
+            if (!exists && status !== 'Kullanım Dışı') {
               loadedRecords.push({
                 furnaceId: f.id,
                 name: f.name,
                 capacity: f.capacity,
-                status: f.status,
+                status: status,
                 chargeCount: 0,
                 meltedAmount: 0,
                 fuelConsumption: 0,
@@ -349,12 +344,12 @@ export default function ReportFormView({
         setFurnaceRecords(loadedRecords);
       } else {
         setSelectedDate(targetDate);
-        setShift('08:00 - 16:00');
+        setShift('09:00 - 17:00');
         setCurrentReportId(`report-${targetDate}-${Math.random().toString(36).substring(2, 7)}`);
         setDescription('');
         setTimeline([
-          { id: '1', time: '08:00', description: 'Çalışma başladı, iş güvenliği ve ocak kontrolleri yapıldı.', type: 'other' },
-          { id: '2', time: '16:00', description: 'Günlük operasyon tamamlandı.', type: 'other' },
+          { id: '1', time: '09:00', description: 'Çalışma başladı, iş güvenliği ve ocak kontrolleri yapıldı.', type: 'other' },
+          { id: '2', time: '17:00', description: 'Günlük operasyon tamamlandı.', type: 'other' },
         ]);
         setProductions([]);
         setNotes('');
@@ -367,12 +362,12 @@ export default function ReportFormView({
           supervisorName: '',
           totalCount: 4,
           absentCount: 0,
-          breakdown: { melters: 2, molders: 1, craneOperators: 1, casters: 0, maintenance: 0, generalWorkers: 0 },
+          breakdown: {},
           notes: '',
         });
         setShiftHours({
-          startTime: '08:00',
-          endTime: '16:00',
+          startTime: '09:00',
+          endTime: '17:00',
           plannedDurationHours: 8,
           breakDurationMinutes: 60,
           totalDowntimeMinutes: 0,
@@ -388,7 +383,12 @@ export default function ReportFormView({
         });
 
         if (settings?.furnaces) {
-          const initialFurnaces = settings.furnaces.map(f => ({
+          // Yeni günlük raporda yalnızca aktif olan (Kullanım Dışı olmayan) ocakları getir
+          const activeFurnaces = settings.furnaces.filter(f => {
+            const status = getFurnaceStatusForDate(f, targetDate);
+            return status !== 'Kullanım Dışı';
+          });
+          const initialFurnaces = activeFurnaces.map(f => ({
             furnaceId: f.id,
             name: f.name,
             capacity: f.capacity,
@@ -524,6 +524,34 @@ export default function ReportFormView({
       return rec;
     }));
   };
+
+  const removeFurnaceRecord = (furnaceId: string) => {
+    setFurnaceRecords(prev => prev.filter(r => r.furnaceId !== furnaceId));
+  };
+
+  const addFurnaceRecord = (furnace: import('@/lib/types').Furnace) => {
+    if (furnaceRecords.some(r => r.furnaceId === furnace.id)) return;
+    setFurnaceRecords(prev => [
+      ...prev,
+      {
+        furnaceId: furnace.id,
+        name: furnace.name,
+        capacity: furnace.capacity,
+        status: getFurnaceStatusForDate(furnace, selectedDate),
+        chargeCount: 0,
+        meltedAmount: 0,
+        fuelConsumption: 0,
+        workDuration: 0,
+        description: '',
+      }
+    ]);
+  };
+
+  // Listede henüz bulunmayan diğer tanımlı ocaklar (kullanıcı isterse ekleyebilsin)
+  const availableOtherFurnaces = useMemo(() => {
+    if (!settings?.furnaces) return [];
+    return settings.furnaces.filter(f => !furnaceRecords.some(r => r.furnaceId === f.id));
+  }, [settings?.furnaces, furnaceRecords]);
 
   // Etiket İşlemleri
   const toggleTag = (tag: string) => {
@@ -1192,25 +1220,17 @@ export default function ReportFormView({
                     </div>
                     <div>
                       <h2 className="text-base font-bold text-gray-900">Vardiya Ekibi & Personel Sayıları</h2>
-                      <p className="text-xs text-gray-500">Fiili çalışan personel sayıları ve görev dağılımı</p>
+                      <p className="text-xs text-gray-500">Vardiyada fiili çalışan ve eksik/izinli personel sayıları</p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
-                      setPersonnel({
-                        ...personnel,
+                      setPersonnel(p => ({
+                        ...p,
                         totalCount: 4,
                         absentCount: 0,
-                        breakdown: {
-                          melters: 2,
-                          molders: 1,
-                          craneOperators: 1,
-                          casters: 0,
-                          maintenance: 0,
-                          generalWorkers: 0,
-                        }
-                      });
+                      }));
                     }}
                     className="w-full sm:w-auto px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold border border-blue-200/60 transition active:scale-95 flex items-center justify-center gap-1.5"
                   >
@@ -1219,19 +1239,19 @@ export default function ReportFormView({
                   </button>
                 </div>
 
-                {/* Personel Özet Sayaçları */}
+                {/* Personel Özet Sayaçları (Fiili Çalışan & Eksik İzinli) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Toplam Çalışan Sayısı */}
-                  <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="p-5 bg-blue-50/70 border border-blue-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
                     <div>
-                      <span className="text-xs font-bold text-blue-900 block">Fiili Çalışan Personel</span>
-                      <span className="text-xs text-blue-700">Vardiyada sahada bulunan toplam kişi</span>
+                      <span className="text-sm font-bold text-blue-950 block">Fiili Çalışan Personel</span>
+                      <span className="text-xs text-blue-700 mt-0.5 block">Vardiyada sahada aktif çalışan toplam kişi</span>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                    <div className="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
                       <button
                         type="button"
                         onClick={() => setPersonnel(p => ({ ...p, totalCount: Math.max(1, (p.totalCount || 1) - 1) }))}
-                        className="w-11 h-11 rounded-xl bg-white border border-blue-200 text-blue-900 font-bold hover:bg-blue-50 transition active:scale-95 flex items-center justify-center text-lg shadow-xs"
+                        className="w-12 h-12 rounded-xl bg-white border border-blue-300 text-blue-900 font-bold hover:bg-blue-100 transition active:scale-95 flex items-center justify-center text-xl shadow-xs"
                       >
                         -
                       </button>
@@ -1240,12 +1260,12 @@ export default function ReportFormView({
                         min="1"
                         value={personnel.totalCount}
                         onChange={(e) => setPersonnel(p => ({ ...p, totalCount: Math.max(0, parseInt(e.target.value) || 0) }))}
-                        className="w-16 h-11 bg-white border border-blue-200 rounded-xl text-center font-bold text-blue-950 text-base font-mono outline-none"
+                        className="w-20 h-12 bg-white border border-blue-300 rounded-xl text-center font-bold text-blue-950 text-lg font-mono outline-none shadow-inner"
                       />
                       <button
                         type="button"
                         onClick={() => setPersonnel(p => ({ ...p, totalCount: (p.totalCount || 0) + 1 }))}
-                        className="w-11 h-11 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition active:scale-95 flex items-center justify-center text-lg shadow-xs"
+                        className="w-12 h-12 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition active:scale-95 flex items-center justify-center text-xl shadow-xs"
                       >
                         +
                       </button>
@@ -1253,16 +1273,16 @@ export default function ReportFormView({
                   </div>
 
                   {/* İzinli / Gelmeyen Personel */}
-                  <div className="p-4 bg-rose-50/60 border border-rose-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="p-5 bg-rose-50/70 border border-rose-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
                     <div>
-                      <span className="text-xs font-bold text-rose-900 block">Eksik / İzinli Personel</span>
-                      <span className="text-xs text-rose-700">Raporlu, izinli veya devamsız</span>
+                      <span className="text-sm font-bold text-rose-950 block">Eksik / İzinli Personel</span>
+                      <span className="text-xs text-rose-700 mt-0.5 block">Raporlu, izinli veya devamsız personel</span>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                    <div className="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
                       <button
                         type="button"
                         onClick={() => setPersonnel(p => ({ ...p, absentCount: Math.max(0, (p.absentCount || 0) - 1) }))}
-                        className="w-11 h-11 rounded-xl bg-white border border-rose-200 text-rose-900 font-bold hover:bg-rose-50 transition active:scale-95 flex items-center justify-center text-lg shadow-xs"
+                        className="w-12 h-12 rounded-xl bg-white border border-rose-300 text-rose-900 font-bold hover:bg-rose-100 transition active:scale-95 flex items-center justify-center text-xl shadow-xs"
                       >
                         -
                       </button>
@@ -1271,87 +1291,16 @@ export default function ReportFormView({
                         min="0"
                         value={personnel.absentCount || 0}
                         onChange={(e) => setPersonnel(p => ({ ...p, absentCount: Math.max(0, parseInt(e.target.value) || 0) }))}
-                        className="w-16 h-11 bg-white border border-rose-200 rounded-xl text-center font-bold text-rose-950 text-base font-mono outline-none"
+                        className="w-20 h-12 bg-white border border-rose-300 rounded-xl text-center font-bold text-rose-950 text-lg font-mono outline-none shadow-inner"
                       />
                       <button
                         type="button"
                         onClick={() => setPersonnel(p => ({ ...p, absentCount: (p.absentCount || 0) + 1 }))}
-                        className="w-11 h-11 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition active:scale-95 flex items-center justify-center text-lg shadow-xs"
+                        className="w-12 h-12 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition active:scale-95 flex items-center justify-center text-xl shadow-xs"
                       >
                         +
                       </button>
                     </div>
-                  </div>
-                </div>
-
-                {/* Görev Dağılımı (Breakdown) */}
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Görev / Rol Bazlı Dağılım
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {[
-                      { key: 'melters', label: 'Ocakçılar (Ergitme)', icon: '🔥' },
-                      { key: 'molders', label: 'Kalıpçı / Maçacı', icon: '🧱' },
-                      { key: 'casters', label: 'Dökümcüler', icon: '🫗' },
-                      { key: 'craneOperators', label: 'Vinç / Forklift', icon: '🏗️' },
-                      { key: 'maintenance', label: 'Bakım / Elektrik', icon: '🔧' },
-                      { key: 'generalWorkers', label: 'Temizlik / Genel', icon: '🧹' },
-                    ].map((item) => {
-                      const count = (personnel.breakdown as any)?.[item.key] || 0;
-                      return (
-                        <div key={item.key} className="p-3.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl flex items-center justify-between gap-3">
-                          <span className="text-xs font-bold text-slate-800 flex items-center gap-2 min-w-0">
-                            <span className="text-base shrink-0">{item.icon}</span>
-                            <span className="truncate">{item.label}</span>
-                          </span>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const val = Math.max(0, count - 1);
-                                setPersonnel({
-                                  ...personnel,
-                                  breakdown: { ...personnel.breakdown, [item.key]: val }
-                                });
-                              }}
-                              className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-sm flex items-center justify-center transition active:scale-95"
-                            >
-                              -
-                            </button>
-                            <input
-                              type="number"
-                              min="0"
-                              value={count}
-                              onChange={(e) => {
-                                const val = Math.max(0, parseInt(e.target.value) || 0);
-                                setPersonnel({
-                                  ...personnel,
-                                  breakdown: {
-                                    ...personnel.breakdown,
-                                    [item.key]: val,
-                                  }
-                                });
-                              }}
-                              className="w-12 h-8 bg-white border border-slate-200 rounded-lg text-center font-bold text-xs font-mono outline-none"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const val = count + 1;
-                                setPersonnel({
-                                  ...personnel,
-                                  breakdown: { ...personnel.breakdown, [item.key]: val }
-                                });
-                              }}
-                              className="w-8 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm flex items-center justify-center transition active:scale-95 shadow-2xs"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 </div>
 
@@ -1361,10 +1310,10 @@ export default function ReportFormView({
                     Personel & Ekip Notları (Devamsızlıklar, mesai, görev değişiklikleri)
                   </label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={personnel.notes || ''}
                     onChange={(e) => setPersonnel({ ...personnel, notes: e.target.value })}
-                    placeholder="Örn: 2 operatör döküm alanına takviye verildi. Mehmet Usta yıllık izinde."
+                    placeholder="Örn: 1 operatör yıllık izinde. Vardiya amiri takviyesi yapıldı."
                     className="app-textarea"
                   />
                 </div>
@@ -1403,18 +1352,28 @@ export default function ReportFormView({
                           </div>
                         </div>
 
-                        {/* Ocak Durumu */}
-                        <div className="w-full sm:w-44">
-                          <ModernSelect
-                            value={rec.status}
-                            onChange={(val) => updateFurnaceField(rec.furnaceId, 'status', val)}
-                            options={[
-                              { value: 'Çalışıyor', label: 'Çalışıyor' },
-                              { value: 'Bakımda', label: 'Bakımda' },
-                              { value: 'Arızalı', label: 'Arızalı' },
-                              { value: 'Kullanım Dışı', label: 'Kullanım Dışı' },
-                            ]}
-                          />
+                        {/* Ocak Durumu ve Kaldır Butonu */}
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <div className="w-full sm:w-44">
+                            <ModernSelect
+                              value={rec.status}
+                              onChange={(val) => updateFurnaceField(rec.furnaceId, 'status', val)}
+                              options={[
+                                { value: 'Çalışıyor', label: 'Çalışıyor' },
+                                { value: 'Bakımda', label: 'Bakımda' },
+                                { value: 'Arızalı', label: 'Arızalı' },
+                                { value: 'Kullanım Dışı', label: 'Kullanım Dışı' },
+                              ]}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFurnaceRecord(rec.furnaceId)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition shrink-0"
+                            title="Bu ocağı rapordan çıkar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
 
@@ -1503,6 +1462,42 @@ export default function ReportFormView({
                       </div>
                     </div>
                   ))}
+
+                  {/* Hiç ocak kalmadıysa */}
+                  {furnaceRecords.length === 0 && (
+                    <div className="p-8 text-center border-2 border-dashed border-gray-200 rounded-2xl space-y-2">
+                      <Flame className="w-8 h-8 text-gray-300 mx-auto" />
+                      <p className="text-sm font-bold text-gray-600">Bu raporda henüz listelenen bir ocak yok</p>
+                      <p className="text-xs text-gray-400">Yalnızca aktif ocaklar listelenir. Aşağıdan dilediğiniz ocağı rapora ekleyebilirsiniz.</p>
+                    </div>
+                  )}
+
+                  {/* Kullanım dışı veya henüz eklenmemiş ocakları isteğe bağlı ekleme paneli */}
+                  {availableOtherFurnaces.length > 0 && (
+                    <div className="p-4 bg-amber-50/40 border border-dashed border-amber-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="text-xs font-bold text-gray-800 block">
+                          Diğer / Kullanım Dışı Ergitme Ocakları
+                        </span>
+                        <span className="text-[11px] text-gray-500">
+                          Gerektiğinde kullanım dışındaki ocakları da bu rapora ekleyebilirsiniz.
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {availableOtherFurnaces.map(f => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            onClick={() => addFurnaceRecord(f)}
+                            className="px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs active:scale-95"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{f.name} ({f.capacity}) Ekle</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
