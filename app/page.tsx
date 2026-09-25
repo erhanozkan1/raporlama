@@ -667,6 +667,7 @@ export default function FoundryApp() {
             settings={settings}
             onSaveSettings={handleSaveAllSettings}
             reportsCount={reports.length}
+            userRole={currentUser?.role}
           />
         );
       case 'users':

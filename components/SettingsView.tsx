@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AppSettings, Furnace } from '@/lib/types';
+import { AppSettings, Furnace, UserRole } from '@/lib/types';
 import {
   Cpu,
   Tag,
@@ -21,15 +21,20 @@ interface SettingsViewProps {
   settings: AppSettings | null;
   onSaveSettings: (settings: AppSettings) => void;
   reportsCount: number;
+  userRole?: UserRole;
 }
 
 function SettingsView({ 
   settings, 
   onSaveSettings, 
-  reportsCount 
+  reportsCount,
+  userRole
 }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState<'furnaces' | 'tags' | 'shifts' | 'system'>('furnaces');
   const [showPaperFormModal, setShowPaperFormModal] = useState(false);
+
+  // Sadece admin ve superadmin matbu form alanlarını görebilir ve yönetebilir
+  const isAdmin = !userRole || userRole === 'admin' || userRole === 'superadmin';
 
   // Edit states
   const [editedFurnaces, setEditedFurnaces] = useState<Furnace[]>(settings?.furnaces || []);
@@ -138,15 +143,17 @@ function SettingsView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <button
-            onClick={() => setShowPaperFormModal(true)}
-            id="btn-open-paper-form-modal"
-            className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 shadow-sm flex items-center gap-2 active:scale-95"
-            title="Personelin sahada kalemle veri doldurabileceği A4 matbu formu düzenleyin ve yazdırın"
-          >
-            <FileText className="w-4 h-4 text-amber-600" />
-            <span>Matbu Kağıt Formu (PDF)</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowPaperFormModal(true)}
+              id="btn-open-paper-form-modal"
+              className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 shadow-sm flex items-center gap-2 active:scale-95"
+              title="Personelin sahada kalemle veri doldurabileceği A4 matbu formu düzenleyin ve yazdırın"
+            >
+              <FileText className="w-4 h-4 text-amber-600" />
+              <span>Matbu Kağıt Formu (PDF)</span>
+            </button>
+          )}
           <button
             onClick={handleSaveAll}
             id="btn-save-all-settings"
@@ -365,29 +372,31 @@ function SettingsView({
               </div>
             </div>
 
-            {/* Matbu Kağıt Formu Kartı */}
-            <div className="p-5 border border-amber-200/70 bg-gradient-to-br from-amber-50/60 to-orange-50/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="p-3 bg-amber-500 text-white rounded-xl shadow-sm shrink-0">
-                  <Printer className="w-5 h-5" />
+            {/* Matbu Kağıt Formu Kartı (Sadece Admin) */}
+            {isAdmin && (
+              <div className="p-5 border border-amber-200/70 bg-gradient-to-br from-amber-50/60 to-orange-50/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-3 bg-amber-500 text-white rounded-xl shadow-sm shrink-0">
+                    <Printer className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 font-display">
+                      Saha Kağıt Üretim Takip Formu (Matbu Şablon)
+                    </h3>
+                    <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
+                      Saha döküm personelinin vardiya esnasında tablet/bilgisayar yerine elle kalemle doldurabileceği standart A4 dikey matbu takip formu. Başlıkları, ocak listesini ve satır adetlerini özelleştirerek PDF olarak indirebilir veya yazdırabilirsiniz.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900 font-display">
-                    Saha Kağıt Üretim Takip Formu (Matbu Şablon)
-                  </h3>
-                  <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
-                    Saha döküm personelinin vardiya esnasında tablet/bilgisayar yerine elle kalemle doldurabileceği standart A4 dikey matbu takip formu. Başlıkları, ocak listesini ve satır adetlerini özelleştirerek PDF olarak indirebilir veya yazdırabilirsiniz.
-                  </p>
-                </div>
+                <button
+                  onClick={() => setShowPaperFormModal(true)}
+                  className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 shadow-sm active:scale-95"
+                >
+                  <FileText className="w-4 h-4 text-amber-400" />
+                  Formu Düzenle & Yazdır
+                </button>
               </div>
-              <button
-                onClick={() => setShowPaperFormModal(true)}
-                className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 shadow-sm active:scale-95"
-              >
-                <FileText className="w-4 h-4 text-amber-400" />
-                Formu Düzenle & Yazdır
-              </button>
-            </div>
+            )}
           </div>
         )}
 
@@ -405,12 +414,14 @@ function SettingsView({
         onCancel={() => setDeletingFurnace(null)}
       />
 
-      {/* Matbu Kağıt Takip Formu Modalı */}
-      <PaperFormModal
-        isOpen={showPaperFormModal}
-        onClose={() => setShowPaperFormModal(false)}
-        settings={settings}
-      />
+      {/* Matbu Kağıt Takip Formu Modalı (Sadece Admin) */}
+      {isAdmin && (
+        <PaperFormModal
+          isOpen={showPaperFormModal}
+          onClose={() => setShowPaperFormModal(false)}
+          settings={settings}
+        />
+      )}
     </div>
   );
 }
