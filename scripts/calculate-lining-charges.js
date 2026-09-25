@@ -27,8 +27,8 @@ async function calculateAndUpdate() {
   let inductionTonnage = 0;
   const inductionDays = [];
 
-  // 2. Mazotlu Ocak (Büyük) Hesabı (26.07.2026 astar / pota değişimi)
-  const dieselDate = '2026-07-26';
+  // 2. Mazotlu Ocak (Büyük) Hesabı (08.08.2026 pota / astar değişimi)
+  const dieselDate = '2026-08-08';
   let dieselCharges = 0;
   let dieselTonnage = 0;
   const dieselDays = [];
@@ -64,8 +64,8 @@ async function calculateAndUpdate() {
 
   console.log(`\n=== MAZOTLU OCAK BÜYÜK (Pota/Astar Tarihi: ${dieselDate}) ===`);
   console.log(`Toplam Çalışan Gün Sayısı: ${dieselDays.length}`);
-  console.log(`26.07.2026 Sonrası Toplam Şarj Sayısı: ${dieselCharges}`);
-  console.log(`26.07.2026 Sonrası Toplam Tonaj: ${(dieselTonnage / 1000).toFixed(2)} ton (${dieselTonnage} kg)`);
+  console.log(`08.08.2026 Sonrası Toplam Şarj Sayısı: ${dieselCharges}`);
+  console.log(`08.08.2026 Sonrası Toplam Tonaj: ${(dieselTonnage / 1000).toFixed(2)} ton (${dieselTonnage} kg)`);
 
   // Ayarları güncelle
   const updatedFurnaces = settings.furnaces.map(f => {
@@ -82,7 +82,7 @@ async function calculateAndUpdate() {
           description: 'İndüksiyon ocağı refrakter astarı yenilendi.',
           durationHours: 12
         },
-        ...existingMaint.filter(m => !(m.date === inductionDate && m.type === 'Bakım')) // Tesisat temizliği yerine astar ekle
+        ...existingMaint.filter(m => !(m.date === inductionDate && m.type === 'Bakım'))
       ];
 
       return {
@@ -96,10 +96,25 @@ async function calculateAndUpdate() {
 
     if (f.id === 'furnace-1783334064928' || (f.name && f.name.toLowerCase().includes('mazotlu ocak (büyük)'))) {
       // Mazotlu Ocak Büyük
+      const existingMaint = (f.maintenanceHistory || []).filter(m => m.date !== '2026-07-26');
+      const newMaint = [
+        {
+          id: `maint-${Date.now()}-diesel-pota`,
+          date: dieselDate,
+          type: 'Astar Değişimi',
+          technician: 'Bakım Ekibi',
+          description: 'Mazotlu ocağın potası değiştirildi.',
+          durationHours: 8
+        },
+        ...existingMaint
+      ];
+
       return {
         ...f,
         liningLastReplaced: dieselDate,
-        liningChargeCount: dieselCharges
+        lastMaintenanceDate: dieselDate,
+        liningChargeCount: dieselCharges,
+        maintenanceHistory: newMaint
       };
     }
 
