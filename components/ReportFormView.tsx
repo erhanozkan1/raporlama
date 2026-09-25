@@ -435,16 +435,28 @@ export default function ReportFormView({
   };
 
   const removeProductionRow = (id: string) => {
-    setProductions(productions.filter(item => item.id !== id));
+    setProductions(prev => prev.filter(item => item.id !== id));
   };
 
   const updateProductionRow = (id: string, field: keyof ProductionItem, value: any) => {
-    setProductions(productions.map(item => {
+    setProductions(prev => prev.map(item => {
       if (item.id === id) {
         let val = value;
         if (field === 'quantity') val = parseInt(value) || 0;
         else if (field === 'tonnage') val = parseFloat(value) || 0;
         return { ...item, [field]: val };
+      }
+      return item;
+    }));
+  };
+
+  const updateProductionFields = (id: string, fields: Partial<ProductionItem>) => {
+    setProductions(prev => prev.map(item => {
+      if (item.id === id) {
+        const updated = { ...item, ...fields };
+        if ('quantity' in fields) updated.quantity = parseInt(fields.quantity as any) || 0;
+        if ('tonnage' in fields) updated.tonnage = parseFloat(fields.tonnage as any) || 0;
+        return updated;
       }
       return item;
     }));
@@ -1569,22 +1581,58 @@ export default function ReportFormView({
                           #{idx + 1}
                         </div>
 
-                        {/* Kalıp Türü */}
-                        <div className="md:col-span-5">
-                          <label className="text-[10px] font-bold text-gray-500 md:hidden block mb-1">Kalıp Türü</label>
-                          <select
-                            value={p.moldType || 'Kum Kalıp'}
-                            onChange={(e) => {
-                              const selectedType = e.target.value;
-                              updateProductionRow(p.id, 'moldType', selectedType);
-                              updateProductionRow(p.id, 'productName', selectedType);
-                            }}
-                            className="w-full h-10 md:h-9.5 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/30"
-                          >
-                            <option value="Kum Kalıp">Kum Kalıp</option>
-                            <option value="Fren Diski Kalıbı">Fren Diski Kalıbı</option>
-                            <option value="Döküm Kalıp">Döküm Kalıp</option>
-                          </select>
+                        {/* Kalıp Türü (Seçilebilir ve Yazılabilir Datalist) */}
+                        <div className="md:col-span-5 space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 block">Kalıp Türü / Parça</label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              list={`mold-options-${p.id}`}
+                              value={p.moldType || ''}
+                              onChange={(e) => {
+                                const selectedType = e.target.value;
+                                updateProductionFields(p.id, {
+                                  moldType: selectedType,
+                                  productName: selectedType
+                                });
+                              }}
+                              placeholder="Kalıp türü seçin veya yazın..."
+                              className="w-full h-10 md:h-9.5 px-3 bg-white border border-gray-300 hover:border-emerald-400 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/30 transition shadow-2xs"
+                            />
+                            <datalist id={`mold-options-${p.id}`}>
+                              <option value="Kum Kalıp" />
+                              <option value="Fren Diski" />
+                              <option value="Fren Diski Kalıbı" />
+                              <option value="Döküm Kalıp" />
+                              <option value="Kokil Kalıp" />
+                              <option value="Reçineli Kalıp" />
+                              <option value="Maçalı Döküm" />
+                              <option value="Poyra Kalıbı" />
+                              <option value="Kasnak Kalıbı" />
+                            </datalist>
+                          </div>
+                          {/* Hızlı Seçim Butonları */}
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            {['Kum Kalıp', 'Fren Diski', 'Döküm Kalıp'].map((quickType) => (
+                              <button
+                                key={quickType}
+                                type="button"
+                                onClick={() => {
+                                  updateProductionFields(p.id, {
+                                    moldType: quickType,
+                                    productName: quickType
+                                  });
+                                }}
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition ${
+                                  (p.moldType === quickType)
+                                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                                    : 'bg-white hover:bg-emerald-50 text-gray-600 hover:text-emerald-700 border-gray-200'
+                                }`}
+                              >
+                                {quickType}
+                              </button>
+                            ))}
+                          </div>
                         </div>
 
                         {/* Kalıp Adedi */}
