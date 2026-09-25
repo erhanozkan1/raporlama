@@ -442,8 +442,11 @@ export default function ReportFormView({
     setProductions(prev => prev.map(item => {
       if (item.id === id) {
         let val = value;
-        if (field === 'quantity') val = parseInt(value) || 0;
-        else if (field === 'tonnage') val = parseFloat(value) || 0;
+        if (typeof value === 'string') {
+          val = value.replace(/^0+(?=\d)/, '');
+        }
+        if (field === 'quantity') val = val === '' ? 0 : (parseInt(val) || 0);
+        else if (field === 'tonnage') val = val === '' ? 0 : (parseFloat(val) || 0);
         return { ...item, [field]: val };
       }
       return item;
@@ -510,7 +513,8 @@ export default function ReportFormView({
           }
         }
         if (field === 'durationMinutes') {
-          updated.durationMinutes = parseInt(value) || 0;
+          const clean = typeof value === 'string' ? value.replace(/^0+(?=\d)/, '') : value;
+          updated.durationMinutes = clean === '' ? 0 : (parseInt(clean) || 0);
         }
         if (field === 'furnaceId') {
           const matched = settings?.furnaces?.find(f => f.id === value);
@@ -527,10 +531,13 @@ export default function ReportFormView({
     setFurnaceRecords(furnaceRecords.map(rec => {
       if (rec.furnaceId === furnaceId) {
         let val = value;
-        if (field === 'chargeCount') val = parseInt(value) || 0;
-        else if (field === 'meltedAmount') val = parseInt(value) || 0;
-        else if (field === 'fuelConsumption') val = parseFloat(value) || 0;
-        else if (field === 'workDuration') val = parseFloat(value) || 0;
+        if (typeof value === 'string') {
+          val = value.replace(/^0+(?=\d)/, '');
+        }
+        if (field === 'chargeCount') val = val === '' ? 0 : (parseInt(val) || 0);
+        else if (field === 'meltedAmount') val = val === '' ? 0 : (parseInt(val) || 0);
+        else if (field === 'fuelConsumption') val = val === '' ? 0 : (parseFloat(val) || 0);
+        else if (field === 'workDuration') val = val === '' ? 0 : (parseFloat(val) || 0);
         return { ...rec, [field]: val };
       }
       return rec;
@@ -1085,8 +1092,13 @@ export default function ReportFormView({
                         min="1"
                         max="24"
                         step="0.5"
-                        value={shiftHours.plannedDurationHours}
-                        onChange={(e) => setShiftHours({ ...shiftHours, plannedDurationHours: parseFloat(e.target.value) || 8 })}
+                        placeholder="8"
+                        value={shiftHours.plannedDurationHours === 0 ? '' : shiftHours.plannedDurationHours}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                          setShiftHours({ ...shiftHours, plannedDurationHours: clean === '' ? 0 : (parseFloat(clean) || 0) });
+                        }}
                         className="app-input text-center font-mono font-bold"
                       />
                       <div className="flex flex-wrap gap-1 mt-1.5 justify-center">
@@ -1114,8 +1126,13 @@ export default function ReportFormView({
                         type="number"
                         min="0"
                         step="15"
-                        value={shiftHours.breakDurationMinutes}
-                        onChange={(e) => setShiftHours({ ...shiftHours, breakDurationMinutes: parseInt(e.target.value) || 0 })}
+                        placeholder="0"
+                        value={shiftHours.breakDurationMinutes === 0 ? '' : shiftHours.breakDurationMinutes}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                          setShiftHours({ ...shiftHours, breakDurationMinutes: clean === '' ? 0 : (parseInt(clean) || 0) });
+                        }}
                         className="app-input text-center font-mono font-bold"
                       />
                       <div className="flex flex-wrap gap-1 mt-1.5 justify-center">
@@ -1270,8 +1287,13 @@ export default function ReportFormView({
                       <input
                         type="number"
                         min="1"
-                        value={personnel.totalCount}
-                        onChange={(e) => setPersonnel(p => ({ ...p, totalCount: Math.max(0, parseInt(e.target.value) || 0) }))}
+                        placeholder="0"
+                        value={personnel.totalCount === 0 ? '' : personnel.totalCount}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                          setPersonnel(p => ({ ...p, totalCount: clean === '' ? 0 : Math.max(0, parseInt(clean) || 0) }));
+                        }}
                         className="w-20 h-12 bg-white border border-blue-300 rounded-xl text-center font-bold text-blue-950 text-lg font-mono outline-none shadow-inner"
                       />
                       <button
@@ -1301,8 +1323,13 @@ export default function ReportFormView({
                       <input
                         type="number"
                         min="0"
-                        value={personnel.absentCount || 0}
-                        onChange={(e) => setPersonnel(p => ({ ...p, absentCount: Math.max(0, parseInt(e.target.value) || 0) }))}
+                        placeholder="0"
+                        value={personnel.absentCount === 0 ? '' : personnel.absentCount}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                          setPersonnel(p => ({ ...p, absentCount: clean === '' ? 0 : Math.max(0, parseInt(clean) || 0) }));
+                        }}
                         className="w-20 h-12 bg-white border border-rose-300 rounded-xl text-center font-bold text-rose-950 text-lg font-mono outline-none shadow-inner"
                       />
                       <button
@@ -1404,7 +1431,9 @@ export default function ReportFormView({
                           <input
                             type="number"
                             min="0"
-                            value={rec.chargeCount}
+                            placeholder="0"
+                            value={rec.chargeCount === 0 ? '' : rec.chargeCount}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => updateFurnaceField(rec.furnaceId, 'chargeCount', e.target.value)}
                             className="app-input text-center font-mono font-bold"
                           />
@@ -1434,7 +1463,9 @@ export default function ReportFormView({
                             type="number"
                             min="0"
                             step="10"
-                            value={rec.meltedAmount}
+                            placeholder="0"
+                            value={rec.meltedAmount === 0 ? '' : rec.meltedAmount}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => updateFurnaceField(rec.furnaceId, 'meltedAmount', e.target.value)}
                             className="app-input text-center text-amber-700 font-mono font-bold"
                           />
@@ -1456,7 +1487,9 @@ export default function ReportFormView({
                             min="0"
                             max="24"
                             step="0.5"
-                            value={rec.workDuration}
+                            placeholder="0"
+                            value={rec.workDuration === 0 ? '' : rec.workDuration}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => updateFurnaceField(rec.furnaceId, 'workDuration', e.target.value)}
                             className="app-input text-center font-mono font-bold"
                           />
@@ -1645,8 +1678,9 @@ export default function ReportFormView({
                             <input
                               type="number"
                               min="1"
-                              placeholder="Adet"
-                              value={p.quantity}
+                              placeholder="0"
+                              value={p.quantity === 0 ? '' : p.quantity}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => updateProductionRow(p.id, 'quantity', e.target.value)}
                               className="w-full h-11 px-3 bg-white border border-gray-300 rounded-xl text-xs sm:text-sm font-bold text-center font-mono outline-none focus:ring-2 focus:ring-emerald-500/30"
                             />
@@ -1663,7 +1697,8 @@ export default function ReportFormView({
                               min="0"
                               step="0.1"
                               placeholder="0"
-                              value={p.tonnage || ''}
+                              value={p.tonnage === 0 ? '' : (p.tonnage || '')}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => updateProductionRow(p.id, 'tonnage', e.target.value)}
                               className="w-full h-11 px-3 bg-white border border-gray-300 rounded-xl text-xs sm:text-sm font-bold text-center text-emerald-700 font-mono outline-none focus:ring-2 focus:ring-emerald-500/30"
                             />
@@ -1819,7 +1854,9 @@ export default function ReportFormView({
                             <input
                               type="number"
                               min="1"
-                              value={d.durationMinutes}
+                              placeholder="0"
+                              value={d.durationMinutes === 0 ? '' : d.durationMinutes}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => updateDowntimeRow(d.id, 'durationMinutes', e.target.value)}
                               className="app-input text-xs font-bold text-center text-rose-700 font-mono"
                             />
