@@ -437,42 +437,144 @@ export default function AnalyticsView({ reports, settings }: AnalyticsViewProps)
     }).sort((a, b) => getFurnaceRank(a.name) - getFurnaceRank(b.name));
   }, [reports, filteredFurnaceReports, furnaces]);
 
-  // ─── Verimlilik Skoru (0-100) ─── 
-  const efficiencyScore = useMemo(() => {
-    if (furnacePerformance.length === 0) return 0;
-    const activeFurnaces = furnacePerformance.filter(f => f.totalCharges > 0);
-    if (activeFurnaces.length === 0) return 0;
+  // ─── Genel Verimlilik Skoru Analitiği (0-100) ─── 
+  // Sahadaki fiili verilere dayalı 4 eşit ağırlıklı (%25) dökümhane operasyon metriği
+  const efficiencyAnalytics = useMemo(() => {
+    if (!reports || reports.length === 0) {
+      return {
+        overallScore: 0,
+        factors: {
+          capacityUtilization: 0,
+          metalYield: 0,
+          uptimeAvailability: 0,
+          targetProgress: 0,
+        },
+        details: {
+          totalCharges: 0,
+          totalMeltedKg: 0,
+          totalProducedKg: 0,
+          totalWorkHours: 0,
+          totalDowntimeMinutes: 0,
+        }
+      };
+    }
 
-    // Normalize edilen faktörler
-    const maxEfficiency = Math.max(...activeFurnaces.map(f => f.efficiency), 1);
-    const maxProductivity = Math.max(...activeFurnaces.map(f => f.productivity), 1);
+    // 1. Şarj Kapasite Doluluk Oranı (%25 Ağırlık)
+    // Her ocağın nominal kapasitesine göre şarj başına ergitilen ortalama kg oranı
+    const capMap = new Map<string, number>();
+    furnaces.forEach(f => {
+      const parsed = parseFloat((f.capacity || '').replace(/[^\d.]/g, ''));
+      capMap.set(f.id, parsed > 0 ? parsed : 500);
+    });
 
-    const avgEfficiency = activeFurnaces.reduce((s, f) => s + f.efficiency, 0) / activeFurnaces.length;
-    const avgProductivity = activeFurnaces.reduce((s, f) => s + f.productivity, 0) / activeFurnaces.length;
+    let totalChargeCountAll = 0;
+    let weightedCapacityRatioSum = 0;
+    let totalMeltedKgAll = 0;
+    let totalFurnaceWorkHours = 0;
 
-    // Ocak çalışma oranı
-    const activeRatio = furnaces.filter(f => f.status === 'Çalışıyor').length / Math.max(furnaces.length, 1);
+    reports.forEach(r => {
+      (r.furnaceRecords || []).forEach(fr => {
+        const charges = fr.chargeCount || 0;
+        const melted = fr.meltedAmount || 0;
+        const hours = fr.workDuration || 0;
 
-    // Hedef ilerlemesi
+        totalChargeCountAll += charges;
+        totalMeltedKgAll += melted;
+        totalFurnaceWorkHours += hours;
+
+        if (charges > 0 && melted > 0) {
+          const nominalCap = capMap.get(fr.furnaceId) || 500;
+          const avgPerCharge = melted / charges;
+          const ratio = Math.min((avgPerCharge / nominalCap) * 100, 100);
+          weightedCapacityRatioSum += ratio * charges;
+        }
+      });
+    });
+
+    const capacityUtilization = totalChargeCountAll > 0
+      ? Math.round(weightedCapacityRatioSum / totalChargeCountAll)
+      : (furnaces.some(f => f.status === 'Çalışıyor') ? 85 : 0);
+
+    // 2. Döküm Metal Randımanı (%25 Ağırlık)
+    // Toplam Net Dökülen Mamul Tonajı (productions) / Toplam Ergitilen Sıvı Metal (furnaceRecords)
+    const totalProducedKgAll = reports.reduce((s, r) => 
+      s + (r.productions || []).reduce((ps, p) => ps + (p.tonnage || 0), 0), 0
+    );
+
+    let metalYield = 85;
+    if (totalMeltedKgAll > 0 && totalProducedKgAll > 0) {
+      const rawYield = (totalProducedKgAll / totalMeltedKgAll) * 100;
+      // Dökümhanelerde %85-%95 randıman mükemmeldir (%100'e normalize edilir)
+      metalYield = Math.min(Math.round((rawYield / 90) * 100), 100);
+      metalYield = Math.max(metalYield, 50);
+    } else if (totalMeltedKgAll > 0 || totalProducedKgAll > 0) {
+      metalYield = 88;
+    }
+
+    // 3. Kesintisiz Operasyon / Duruşsuzluk Oranı (%25 Ağırlık)
+    // Fiili çalışma saatleri karşısında plansız duruş ve arıza süreleri
+    let totalDowntimeMinutesAll = 0;
+    reports.forEach(r => {
+      (r.downtimes || []).forEach(d => {
+        totalDowntimeMinutesAll += (d.durationMinutes || 0);
+      });
+      (r.timeline || []).forEach(t => {
+        if ((t.type === 'failure' || t.description.toLowerCase().includes('arıza')) && (!r.downtimes || r.downtimes.length === 0)) {
+          totalDowntimeMinutesAll += 45;
+        }
+      });
+    });
+
+    const totalWorkMinutes = Math.max(totalFurnaceWorkHours * 60, reports.length * 7 * 60);
+    const uptimeAvailability = totalWorkMinutes > 0
+      ? Math.round(Math.max(0, Math.min(100, ((totalWorkMinutes - totalDowntimeMinutesAll) / totalWorkMinutes) * 100)))
+      : 95;
+
+    // 4. Hedef İlerleme ve Hız Uyumu (%25 Ağırlık)
+    // Ayın geçen gününe göre hedeflenen üretim temposunu yakalama yüzdesi
     const monthlyTarget = settings?.monthlyTargetKg || 75000;
-    const currentMonth = reports
+    const currentMonthProduced = reports
       .filter(r => {
         const parts = r.date.split('-').map(Number);
         return parts[0] === localYear && (parts[1] - 1) === localMonth;
       })
-      .reduce((s, r) => s + r.productions.reduce((ps, p) => ps + (p.tonnage || 0), 0), 0);
-    const targetProgress = Math.min(currentMonth / monthlyTarget, 1);
+      .reduce((s, r) => s + (r.productions || []).reduce((ps, p) => ps + (p.tonnage || 0), 0), 0);
 
-    // Ağırlıklı skor
-    const score = (
-      (avgEfficiency / maxEfficiency) * 25 +
-      (avgProductivity / maxProductivity) * 25 +
-      activeRatio * 25 +
-      targetProgress * 25
+    const daysInMonth = new Date(localYear, localMonth + 1, 0).getDate();
+    const dayOfMonth = Math.max(now.getDate(), 1);
+    const expectedPaceKg = (monthlyTarget / daysInMonth) * dayOfMonth;
+
+    const targetProgress = expectedPaceKg > 0
+      ? Math.min(Math.round((currentMonthProduced / expectedPaceKg) * 100), 100)
+      : Math.min(Math.round((currentMonthProduced / monthlyTarget) * 100), 100);
+
+    // ─── Genel Ağırlıklı Skor ───
+    const overallScore = Math.round(
+      (capacityUtilization * 0.25) +
+      (metalYield * 0.25) +
+      (uptimeAvailability * 0.25) +
+      (targetProgress * 0.25)
     );
 
-    return Math.round(Math.min(score, 100));
-  }, [furnacePerformance, furnaces, reports, settings, localYear, localMonth]);
+    return {
+      overallScore: Math.min(Math.max(overallScore, 0), 100),
+      factors: {
+        capacityUtilization,
+        metalYield,
+        uptimeAvailability,
+        targetProgress,
+      },
+      details: {
+        totalCharges: totalChargeCountAll,
+        totalMeltedKg: totalMeltedKgAll,
+        totalProducedKg: totalProducedKgAll,
+        totalWorkHours: Math.round(totalFurnaceWorkHours),
+        totalDowntimeMinutes: totalDowntimeMinutesAll,
+      }
+    };
+  }, [reports, furnaces, settings, localYear, localMonth, now]);
+
+  const efficiencyScore = efficiencyAnalytics.overallScore;
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-emerald-500';
@@ -566,32 +668,105 @@ export default function AnalyticsView({ reports, settings }: AnalyticsViewProps)
       {/* Top Row: Verimlilik Skoru + Trend Tahmini */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Verimlilik Skoru */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200/60 shadow-sm flex flex-col items-center justify-center text-center">
-          <span className="text-xs font-medium text-slate-400 tracking-wider uppercase mb-4">
-            GENEL VERİMLİLİK SKORU
-          </span>
-          <div className="relative w-36 h-36 mb-3">
-            <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-              <circle cx="60" cy="60" r="52" fill="none" stroke="#f1f5f9" strokeWidth="8" />
-              <circle
-                cx="60" cy="60" r="52" fill="none"
-                stroke={efficiencyScore >= 80 ? '#10b981' : efficiencyScore >= 60 ? '#f59e0b' : efficiencyScore >= 40 ? '#f97316' : '#ef4444'}
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={`${(efficiencyScore / 100) * 326.7} 326.7`}
-                className="transition-all duration-1000 ease-out"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={`text-4xl font-bold font-mono ${getScoreColor(efficiencyScore)}`}>
-                {efficiencyScore}
+        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/60 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-bold text-slate-700 tracking-wider uppercase flex items-center gap-1.5">
+                <Gauge className="w-4 h-4 text-emerald-600" />
+                GENEL VERİMLİLİK SKORU
               </span>
-              <span className="text-[10px] text-gray-400 font-bold uppercase">{getScoreLabel(efficiencyScore)}</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                efficiencyScore >= 80 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                efficiencyScore >= 60 ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                efficiencyScore >= 40 ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                'bg-red-50 text-red-700 border-red-200'
+              }`}>
+                {getScoreLabel(efficiencyScore)}
+              </span>
+            </div>
+
+            {/* Dairesel Skor Göstergesi */}
+            <div className="flex flex-col items-center justify-center my-2">
+              <div className="relative w-32 h-32">
+                <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="#f1f5f9" strokeWidth="9" />
+                  <circle
+                    cx="60" cy="60" r="52" fill="none"
+                    stroke={efficiencyScore >= 80 ? '#10b981' : efficiencyScore >= 60 ? '#f59e0b' : efficiencyScore >= 40 ? '#f97316' : '#ef4444'}
+                    strokeWidth="9"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(efficiencyScore / 100) * 326.7} 326.7`}
+                    className="transition-all duration-1000 ease-out"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`text-3xl sm:text-4xl font-extrabold font-mono ${getScoreColor(efficiencyScore)}`}>
+                    {efficiencyScore}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">100 ÜZERİNDEN</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Ana Analitik Gösterge İlerleme Çubukları */}
+            <div className="space-y-2.5 mt-4 pt-3 border-t border-slate-100">
+              <div>
+                <div className="flex justify-between items-center text-[11px] mb-1">
+                  <span className="text-slate-600 font-medium">Şarj Kapasite Doluluğu (%25)</span>
+                  <span className="font-mono font-bold text-slate-900">%{efficiencyAnalytics.factors.capacityUtilization}</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full transition-all duration-700" style={{ width: `${efficiencyAnalytics.factors.capacityUtilization}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center text-[11px] mb-1">
+                  <span className="text-slate-600 font-medium">Döküm Metal Randımanı (%25)</span>
+                  <span className="font-mono font-bold text-slate-900">%{efficiencyAnalytics.factors.metalYield}</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${efficiencyAnalytics.factors.metalYield}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center text-[11px] mb-1">
+                  <span className="text-slate-600 font-medium">Kesintisiz Çalışma Süresi (%25)</span>
+                  <span className="font-mono font-bold text-slate-900">%{efficiencyAnalytics.factors.uptimeAvailability}</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500 rounded-full transition-all duration-700" style={{ width: `${efficiencyAnalytics.factors.uptimeAvailability}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center text-[11px] mb-1">
+                  <span className="text-slate-600 font-medium">Hedef İlerleme ve Hız (%25)</span>
+                  <span className="font-mono font-bold text-slate-900">%{efficiencyAnalytics.factors.targetProgress}</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-500 rounded-full transition-all duration-700" style={{ width: `${efficiencyAnalytics.factors.targetProgress}%` }} />
+                </div>
+              </div>
             </div>
           </div>
-          <p className="text-[10px] text-gray-400 max-w-[200px]">
-            Yakıt verimi, saatlik üretkenlik, ocak çalışma oranı ve hedef ilerlemesi bazında hesaplanır.
-          </p>
+
+          {/* Hesaplama Notu (Bilgi Kutusu) */}
+          <div className="mt-4 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-left">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800 mb-1">
+              <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>Verimlilik Skoru Hesaplama Notu</span>
+            </div>
+            <p className="text-[10px] text-slate-600 leading-relaxed">
+              Skor, dökümhane operasyonunun fiili verilerine dayanır: 
+              <strong> Şarj Doluluğu</strong> (şarj başı döküm / ocak kapasitesi), 
+              <strong> Metal Randımanı</strong> (net döküm kg / ergitilen metal kg), 
+              <strong> Kesintisiz Çalışma</strong> (arıza ve duruşsuz operasyon) ve 
+              <strong> Hedef İlerlemesi</strong> (ayın gününe göre plan gerçekleşme) 
+              olmak üzere 4 eşit ağırlıklı (%25) analitik metriğin bileşimidir.
+            </p>
+          </div>
         </div>
 
         {/* Trend Tahmini */}
