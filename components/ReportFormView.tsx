@@ -423,7 +423,7 @@ export default function ReportFormView({
   // Ürün Listesi İşlemleri
   const addProductionRow = () => {
     const nextId = Math.random().toString(36).substring(2, 9);
-    setProductions([...productions, {
+    setProductions(prev => [...prev, {
       id: nextId,
       productName: 'Kum Kalıp',
       productCode: '',
@@ -1532,48 +1532,50 @@ export default function ReportFormView({
 
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between">
                     <div className="px-3 py-1 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200/60 text-xs font-bold font-mono">
-                      Toplam Döküm: {calculatedTotalTonnage.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} kg
+                      Toplam: {calculatedTotalTonnage.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} kg
                     </div>
                     <button
                       type="button"
                       onClick={addProductionRow}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition shadow-xs"
+                      className="h-11 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition shadow-sm active:scale-95 touch-manipulation cursor-pointer"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      Parça Ekle
+                      <Plus className="w-4 h-4" />
+                      <span>Parça Ekle</span>
                     </button>
                   </div>
                 </div>
 
                 {productions.length === 0 ? (
-                  <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl space-y-3">
+                  <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-2xl space-y-3">
                     <Layers className="w-10 h-10 mx-auto text-gray-300" />
                     <p className="text-sm font-medium text-gray-500">Henüz döküm parçası eklenmedi.</p>
                     <button
                       type="button"
                       onClick={addProductionRow}
-                      className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition"
+                      className="h-11 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold inline-flex items-center gap-2 transition shadow-sm active:scale-95 touch-manipulation"
                     >
                       <Plus className="w-4 h-4" />
-                      İlk Döküm Parçasını Ekle
+                      <span>İlk Döküm Parçasını Ekle</span>
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {productions.map((p, idx) => (
                       <div
                         key={p.id}
-                        className="p-3.5 bg-gray-50/70 border border-gray-200 rounded-2xl flex flex-col md:grid md:grid-cols-12 gap-3 items-stretch md:items-center hover:bg-gray-50 transition"
+                        className="p-4 bg-gray-50/80 border border-gray-200 rounded-2xl flex flex-col md:grid md:grid-cols-12 gap-3.5 items-stretch md:items-center hover:bg-gray-50 transition shadow-2xs"
                       >
-                        <div className="flex items-center justify-between md:hidden">
-                          <span className="font-bold text-xs text-gray-400">Kalıp #{idx + 1}</span>
+                        {/* Mobilde Başlık ve Sil Butonu */}
+                        <div className="flex items-center justify-between md:hidden border-b border-gray-200/80 pb-2">
+                          <span className="font-extrabold text-xs text-gray-600">Parça #{idx + 1}</span>
                           <button
                             type="button"
                             onClick={() => removeProductionRow(p.id)}
-                            className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
-                            title="Sil"
+                            className="h-8 px-2.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                            title="Parçayı Sil"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Sil</span>
                           </button>
                         </div>
 
@@ -1581,38 +1583,39 @@ export default function ReportFormView({
                           #{idx + 1}
                         </div>
 
-                        {/* Kalıp Türü (Seçilebilir ve Yazılabilir Datalist) */}
-                        <div className="md:col-span-5 space-y-1">
-                          <label className="text-[10px] font-bold text-gray-500 block">Kalıp Türü / Parça</label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              list={`mold-options-${p.id}`}
-                              value={p.moldType || ''}
-                              onChange={(e) => {
-                                const selectedType = e.target.value;
-                                updateProductionFields(p.id, {
-                                  moldType: selectedType,
-                                  productName: selectedType
-                                });
-                              }}
-                              placeholder="Kalıp türü seçin veya yazın..."
-                              className="w-full h-10 md:h-9.5 px-3 bg-white border border-gray-300 hover:border-emerald-400 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/30 transition shadow-2xs"
-                            />
-                            <datalist id={`mold-options-${p.id}`}>
-                              <option value="Kum Kalıp" />
-                              <option value="Fren Diski" />
-                              <option value="Fren Diski Kalıbı" />
-                              <option value="Döküm Kalıp" />
-                              <option value="Kokil Kalıp" />
-                              <option value="Reçineli Kalıp" />
-                              <option value="Maçalı Döküm" />
-                              <option value="Poyra Kalıbı" />
-                              <option value="Kasnak Kalıbı" />
-                            </datalist>
-                          </div>
-                          {/* Hızlı Seçim Butonları */}
-                          <div className="flex flex-wrap gap-1 pt-0.5">
+                        {/* Kalıp Türü (Mobil ve Masaüstü Tam Uyumlu Select) */}
+                        <div className="md:col-span-5 space-y-1.5">
+                          <label className="text-[11px] font-bold text-gray-700 block">Kalıp Türü</label>
+                          <select
+                            value={p.moldType || 'Kum Kalıp'}
+                            onChange={(e) => {
+                              const selectedType = e.target.value;
+                              updateProductionFields(p.id, {
+                                moldType: selectedType,
+                                productName: selectedType
+                              });
+                            }}
+                            className="w-full h-11 px-3 bg-white border border-gray-300 rounded-xl text-xs sm:text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/30 touch-manipulation cursor-pointer"
+                          >
+                            <option value="Kum Kalıp">Kum Kalıp</option>
+                            <option value="Fren Diski">Fren Diski</option>
+                            <option value="Fren Diski Kalıbı">Fren Diski Kalıbı</option>
+                            <option value="Döküm Kalıp">Döküm Kalıp</option>
+                            <option value="Kokil Kalıp">Kokil Kalıp</option>
+                            <option value="Reçineli Kalıp">Reçineli Kalıp</option>
+                            <option value="Maçalı Döküm">Maçalı Döküm</option>
+                            <option value="Poyra Kalıbı">Poyra Kalıbı</option>
+                            <option value="Kasnak Kalıbı">Kasnak Kalıbı</option>
+                            {p.moldType && ![
+                              'Kum Kalıp', 'Fren Diski', 'Fren Diski Kalıbı', 'Döküm Kalıp',
+                              'Kokil Kalıp', 'Reçineli Kalıp', 'Maçalı Döküm', 'Poyra Kalıbı', 'Kasnak Kalıbı'
+                            ].includes(p.moldType) && (
+                              <option value={p.moldType}>{p.moldType}</option>
+                            )}
+                          </select>
+
+                          {/* Hızlı Dokunmatik Butonlar */}
+                          <div className="flex flex-wrap gap-1.5">
                             {['Kum Kalıp', 'Fren Diski', 'Döküm Kalıp'].map((quickType) => (
                               <button
                                 key={quickType}
@@ -1623,10 +1626,10 @@ export default function ReportFormView({
                                     productName: quickType
                                   });
                                 }}
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition ${
-                                  (p.moldType === quickType)
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition touch-manipulation ${
+                                  p.moldType === quickType
                                     ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
-                                    : 'bg-white hover:bg-emerald-50 text-gray-600 hover:text-emerald-700 border-gray-200'
+                                    : 'bg-white hover:bg-emerald-50 text-gray-700 border-gray-200'
                                 }`}
                               >
                                 {quickType}
@@ -1636,8 +1639,8 @@ export default function ReportFormView({
                         </div>
 
                         {/* Kalıp Adedi */}
-                        <div className="md:col-span-3">
-                          <label className="text-[10px] font-bold text-gray-500 md:hidden block mb-1">Kalıp Adedi</label>
+                        <div className="md:col-span-3 space-y-1.5">
+                          <label className="text-[11px] font-bold text-gray-700 block">Kalıp Adedi</label>
                           <div className="relative">
                             <input
                               type="number"
@@ -1645,15 +1648,15 @@ export default function ReportFormView({
                               placeholder="Adet"
                               value={p.quantity}
                               onChange={(e) => updateProductionRow(p.id, 'quantity', e.target.value)}
-                              className="w-full h-10 md:h-9.5 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-center font-mono outline-none focus:ring-2 focus:ring-emerald-500/30"
+                              className="w-full h-11 px-3 bg-white border border-gray-300 rounded-xl text-xs sm:text-sm font-bold text-center font-mono outline-none focus:ring-2 focus:ring-emerald-500/30"
                             />
-                            <span className="hidden md:inline absolute right-2.5 top-2.5 text-[10px] text-gray-400 font-semibold pointer-events-none">Adet</span>
+                            <span className="absolute right-3 top-3 text-xs text-gray-400 font-semibold pointer-events-none">Adet</span>
                           </div>
                         </div>
 
                         {/* Ağırlık / Tonaj (kg) */}
-                        <div className="md:col-span-2">
-                          <label className="text-[10px] font-bold text-gray-500 md:hidden block mb-1">Ağırlık (kg)</label>
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[11px] font-bold text-gray-700 block">Ağırlık (kg)</label>
                           <div className="relative">
                             <input
                               type="number"
@@ -1662,19 +1665,19 @@ export default function ReportFormView({
                               placeholder="0"
                               value={p.tonnage || ''}
                               onChange={(e) => updateProductionRow(p.id, 'tonnage', e.target.value)}
-                              className="w-full h-10 md:h-9.5 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-center text-emerald-700 font-mono outline-none focus:ring-2 focus:ring-emerald-500/30"
+                              className="w-full h-11 px-3 bg-white border border-gray-300 rounded-xl text-xs sm:text-sm font-bold text-center text-emerald-700 font-mono outline-none focus:ring-2 focus:ring-emerald-500/30"
                             />
-                            <span className="hidden md:inline absolute right-2.5 top-2.5 text-[10px] text-emerald-600 font-semibold pointer-events-none">kg</span>
+                            <span className="absolute right-3 top-3 text-xs text-emerald-600 font-bold pointer-events-none">kg</span>
                           </div>
                         </div>
 
-                        {/* Sil Butonu */}
-                        <div className="hidden md:flex md:col-span-1 justify-center">
+                        {/* Masaüstü Sil Butonu */}
+                        <div className="hidden md:flex md:col-span-1 justify-center pt-5">
                           <button
                             type="button"
                             onClick={() => removeProductionRow(p.id)}
-                            className="p-2 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
-                            title="Sil"
+                            className="p-2 text-gray-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition"
+                            title="Parçayı Sil"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1879,91 +1882,18 @@ export default function ReportFormView({
                   </div>
                 )}
 
-                {/* Notlar, Etiketler, Fotoğraflar ve Yönetici Değerlendirmesi */}
-                <div className="pt-6 border-t border-gray-100 space-y-6">
-                  {/* Vardiya Genel Notları */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center">
-                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">
-                        Operasyon & Vardiya Genel Notları
-                      </label>
-                    </div>
-                    <textarea
-                      rows={3}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Günün genel seyri, hammadde teslimatı, kalite veya saha notları..."
-                      className="app-textarea"
-                    />
-                  </div>
-
-                  {/* Fotoğraflar ve Yönetici Değerlendirmesi */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Fotoğraf Ekleme */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <Camera className="w-3.5 h-3.5 text-gray-400" />
-                          Saha / Döküm Fotoğrafları
-                        </span>
-                        <span className="text-[11px] text-gray-400 font-normal">Maks 5 görsel</span>
-                      </label>
-
-                      <div className="flex flex-wrap gap-2">
-                        {photos.map((pUrl, idx) => (
-                          <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 group">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={pUrl} alt="Saha Fotoğrafı" className="w-full h-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => removePhoto(idx)}
-                              className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handlePhotoUpload}
-                        />
-
-                        <button
-                          type="button"
-                          disabled={isUploading}
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-200 hover:border-amber-400 flex flex-col items-center justify-center text-gray-400 hover:text-amber-600 transition"
-                        >
-                          {isUploading ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                          ) : (
-                            <>
-                              <Plus className="w-4 h-4" />
-                              <span className="text-[9px] mt-0.5">Ekle</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Yönetici Değerlendirmesi */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">
-                        Yönetici / İşletme Müdürü Değerlendirmesi
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={managerEvaluation}
-                        onChange={(e) => setManagerEvaluation(e.target.value)}
-                        placeholder="Genel vardiya performansı onay ve yönetici notu..."
-                        className="app-textarea"
-                      />
-                    </div>
-                  </div>
+                {/* Vardiya Genel Notları */}
+                <div className="pt-6 border-t border-gray-100 space-y-2">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">
+                    Operasyon & Vardiya Genel Notları
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Günün genel seyri, hammadde teslimatı, kalite veya saha operasyon notları..."
+                    className="app-textarea"
+                  />
                 </div>
               </div>
             )}
@@ -1971,8 +1901,8 @@ export default function ReportFormView({
         </AnimatePresence>
       </div>
 
-      {/* Alt Navigasyon Butonları (Geniş, Yüksek Dokunma Hedefi, Güvenli Alt Boşluk) */}
-      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-slate-200 mb-20 lg:mb-4">
+      {/* Alt Navigasyon Butonları (Mobilde Alt Barın Üstünde Kalması İçin pb-24 Eklendi) */}
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-slate-200 pb-24 sm:pb-8">
         <button
           type="button"
           onClick={prevStep}
