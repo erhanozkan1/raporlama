@@ -1,0 +1,6 @@
+{
+  "name": "Döküm Operasyon Takip Sistemi",
+  "description": "Döküm tesisleri için modern, hızlı ve çevrimdışı (offline) uyumlu günlük operasyon, üretim ve ocak takip sistemi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

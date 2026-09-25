@@ -1,0 +1,17 @@
+node_modules/
+.next/
+.next-dev/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Yerel geliştirme verileri (production'da Supabase kullanılır)
+data/db.json
+public/uploads/
+
+# IDE & Build cache
+.claude/
+test-results/
+*.tsbuildinfo
