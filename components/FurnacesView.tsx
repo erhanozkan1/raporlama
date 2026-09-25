@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Furnace, FurnaceStatus, FurnaceFuelType, MaintenanceRecord, MaintenanceType } from '@/lib/types';
+import { sortFurnaces } from '@/lib/furnaceOrder';
 import { 
   Flame, Cpu, ShieldAlert, Settings, Wrench, CheckCircle, 
   Edit3, X, Save, Eye, Plus, Trash2, ChevronRight,
@@ -157,7 +158,7 @@ function FurnacesView({
 
         {/* Furnaces list cards grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {furnaces.map((furnace, index) => (
+          {sortFurnaces(furnaces).map((furnace, index) => (
             <motion.div 
               key={furnace.id}
               initial={{ opacity: 0, y: 20 }}

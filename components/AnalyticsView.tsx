@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { DailyReport, Furnace, AppSettings } from '@/lib/types';
+import { getFurnaceRank } from '@/lib/furnaceOrder';
 import {
   BarChart4,
   TrendingUp,
@@ -433,7 +434,7 @@ export default function AnalyticsView({ reports, settings }: AnalyticsViewProps)
         efficiency: parseFloat(efficiency.toFixed(2)),
         productivity: parseFloat(productivity.toFixed(1)),
       };
-    });
+    }).sort((a, b) => getFurnaceRank(a.name) - getFurnaceRank(b.name));
   }, [reports, filteredFurnaceReports, furnaces]);
 
   // ─── Verimlilik Skoru (0-100) ─── 

@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { DailyReport, AppSettings, User, SafeUser, UserRole, AuditLog } from './types';
 import { hasSupabase, getSupabase } from './supabase';
+import { sortFurnaces } from './furnaceOrder';
 // ============================================================
 // Veri Katmanı: SADECE SUPABASE (Yerel db.json kaydı devre dışı)
 // ============================================================
@@ -113,7 +114,13 @@ export async function getSettingsData(): Promise<AppSettings> {
     .eq('id', 1)
     .maybeSingle();
   if (error) throw error;
-  if (data?.data) return data.data as AppSettings;
+  if (data?.data) {
+    const s = data.data as AppSettings;
+    if (Array.isArray(s.furnaces)) {
+      s.furnaces = sortFurnaces(s.furnaces);
+    }
+    return s;
+  }
   return {
     tags: ['Arıza', 'Bakım', 'Elektrik Kesintisi', 'Mazot', 'Kalıp', 'Hurda', 'Sevkiyat', 'Kalite', 'Ziyaret'],
     shifts: ['1. Vardiya (08:00 - 16:00)', '2. Vardiya (16:00 - 24:00)', '3. Vardiya (24:00 - 08:00)', 'Tüm Gün'],
@@ -125,6 +132,9 @@ export async function getSettingsData(): Promise<AppSettings> {
 export async function saveSettingsData(settings: AppSettings): Promise<AppSettings> {
   if (!hasSupabase) {
     throw new Error('Yerel kayıt devre dışı: Supabase bağlantısı zorunludur.');
+  }
+  if (Array.isArray(settings.furnaces)) {
+    settings.furnaces = sortFurnaces(settings.furnaces);
   }
   const { error } = await getSupabase()
     .from('app_settings')

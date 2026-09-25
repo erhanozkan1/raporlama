@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { AppSettings, Furnace, UserRole } from '@/lib/types';
+import { sortFurnaces } from '@/lib/furnaceOrder';
 import {
   Cpu,
   Tag,
@@ -37,7 +38,7 @@ function SettingsView({
   const isAdmin = !userRole || userRole === 'admin' || userRole === 'superadmin';
 
   // Edit states
-  const [editedFurnaces, setEditedFurnaces] = useState<Furnace[]>(settings?.furnaces || []);
+  const [editedFurnaces, setEditedFurnaces] = useState<Furnace[]>(sortFurnaces(settings?.furnaces || []));
   const [editedTags, setEditedTags] = useState<string[]>(settings?.tags || []);
   const [editedShifts, setEditedShifts] = useState<string[]>(settings?.shifts || []);
   const [editedTarget, setEditedTarget] = useState<number>(settings?.monthlyTargetKg ?? (settings?.monthlyTargetTons ? settings.monthlyTargetTons * 1000 : 75000));
@@ -58,7 +59,7 @@ function SettingsView({
   React.useEffect(() => {
     if (settings) {
       const timer = setTimeout(() => {
-        setEditedFurnaces(settings.furnaces);
+        setEditedFurnaces(sortFurnaces(settings.furnaces));
         setEditedTags(settings.tags);
         setEditedShifts(settings.shifts);
         setEditedTarget(settings.monthlyTargetKg ?? (settings.monthlyTargetTons ? settings.monthlyTargetTons * 1000 : 75000));
@@ -73,7 +74,7 @@ function SettingsView({
 
     const updatedSettings: AppSettings = {
       ...settings,
-      furnaces: editedFurnaces,
+      furnaces: sortFurnaces(editedFurnaces),
       tags: editedTags,
       shifts: editedShifts,
       monthlyTargetKg: editedTarget > 0 ? editedTarget : 75000,
@@ -93,7 +94,7 @@ function SettingsView({
         capacity: newFurnaceCapacity.trim(),
         status: 'Çalışıyor',
       };
-      setEditedFurnaces([...editedFurnaces, newF]);
+      setEditedFurnaces(sortFurnaces([...editedFurnaces, newF]));
       setNewFurnaceName('');
       setNewFurnaceCapacity('');
     }

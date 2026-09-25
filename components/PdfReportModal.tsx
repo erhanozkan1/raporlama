@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { DailyReport, Furnace, AppSettings } from '@/lib/types';
+import { sortFurnaces, getFurnaceRank } from '@/lib/furnaceOrder';
 import {
   FileText,
   Printer,
@@ -304,7 +305,7 @@ export default function PdfReportModal({
 
     // Initialize map with current settings furnaces
     if (settings?.furnaces) {
-      settings.furnaces.forEach(f => {
+      sortFurnaces(settings.furnaces).forEach(f => {
         furnaceStatsMap.set(f.id, {
           name: f.name,
           charges: 0,
@@ -375,7 +376,9 @@ export default function PdfReportModal({
       totalMeltedKg,
       failureCount,
       maintenanceCount,
-      furnaceBreakdown: Array.from(furnaceStatsMap.values()).filter(f => f.charges > 0 || f.meltedKg > 0),
+      furnaceBreakdown: Array.from(furnaceStatsMap.values())
+        .filter(f => f.charges > 0 || f.meltedKg > 0)
+        .sort((a, b) => getFurnaceRank(a.name) - getFurnaceRank(b.name)),
       moldBreakdown: Array.from(moldStatsMap.values()).filter(m => m.quantity > 0 || m.tonnage > 0),
       totalDaysCount: filteredReports.length,
     };
@@ -737,9 +740,11 @@ export default function PdfReportModal({
                             }
                           });
                         });
-                        return Array.from(map.entries()).map(([id, name]) => (
-                          <option key={id} value={id}>{name}</option>
-                        ));
+                        return Array.from(map.entries())
+                          .sort((a, b) => getFurnaceRank(a[1]) - getFurnaceRank(b[1]))
+                          .map(([id, name]) => (
+                            <option key={id} value={id}>{name}</option>
+                          ));
                       })()}
                     </select>
                   </div>

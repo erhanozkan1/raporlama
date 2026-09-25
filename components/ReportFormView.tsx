@@ -14,6 +14,7 @@ import {
   ShiftHours,
   ShiftHandover
 } from '@/lib/types';
+import { sortFurnaces } from '@/lib/furnaceOrder';
 import ModernSelect from './ui/ModernSelect';
 import {
   Plus,
@@ -383,11 +384,11 @@ export default function ReportFormView({
         });
 
         if (settings?.furnaces) {
-          // Yeni günlük raporda yalnızca aktif olan (Kullanım Dışı olmayan) ocakları getir
-          const activeFurnaces = settings.furnaces.filter(f => {
+          // Yeni günlük raporda yalnızca aktif olan (Kullanım Dışı olmayan) ocakları getir ve standart sırada listele
+          const activeFurnaces = sortFurnaces(settings.furnaces.filter(f => {
             const status = getFurnaceStatusForDate(f, targetDate);
             return status !== 'Kullanım Dışı';
-          });
+          }));
           const initialFurnaces = activeFurnaces.map(f => ({
             furnaceId: f.id,
             name: f.name,
@@ -569,7 +570,7 @@ export default function ReportFormView({
   // Listede henüz bulunmayan diğer tanımlı ocaklar (kullanıcı isterse ekleyebilsin)
   const availableOtherFurnaces = useMemo(() => {
     if (!settings?.furnaces) return [];
-    return settings.furnaces.filter(f => !furnaceRecords.some(r => r.furnaceId === f.id));
+    return sortFurnaces(settings.furnaces.filter(f => !furnaceRecords.some(r => r.furnaceId === f.id)));
   }, [settings?.furnaces, furnaceRecords]);
 
   // Etiket İşlemleri
@@ -1807,7 +1808,7 @@ export default function ReportFormView({
                               className="app-input text-xs font-semibold"
                             >
                               <option value="">Tüm Tesis / Genel</option>
-                              {settings?.furnaces?.map(f => (
+                              {sortFurnaces(settings?.furnaces || []).map(f => (
                                 <option key={f.id} value={f.id}>{f.name}</option>
                               ))}
                             </select>

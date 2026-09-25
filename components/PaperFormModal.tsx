@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { AppSettings, Furnace } from '@/lib/types';
+import { sortFurnaces } from '@/lib/furnaceOrder';
 import {
   FileText,
   Printer,
@@ -104,7 +105,7 @@ export default function PaperFormModal({ isOpen, onClose, settings }: PaperFormM
     printWindow.document.close();
   };
 
-  const furnacesList: Furnace[] = settings?.furnaces || [];
+  const furnacesList: Furnace[] = sortFurnaces(settings?.furnaces || []);
 
   return (
     <AnimatePresence>
