@@ -1,4 +1,21 @@
-import { StockItem, StockMovement } from './types';
+import { StockItem, StockMovement, StockPallet } from './types';
+
+/**
+ * Sıradaki otomatik palet numarasını üretir (örn: PLT-001, PLT-002, PLT-015)
+ */
+export function generateNextPalletNumber(pallets: StockPallet[] = []): string {
+  let maxNum = 0;
+  for (const p of pallets) {
+    const match = (p.palletNumber || '').match(/\d+/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+  return `PLT-${String(maxNum + 1).padStart(3, '0')}`;
+}
 
 /**
  * Stok öğesinin toplam adet, birim ağırlık ve toplam ağırlık değerlerini hesaplar.

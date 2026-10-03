@@ -219,6 +219,29 @@ export interface StockMovement {
   createdAt: string;
 }
 
+export type PalletStatus = 'in_stock' | 'dispatched';
+
+export interface StockPallet {
+  id: string;                      // Benzersiz kimlik
+  palletNumber: string;            // Palet / Kasa No (örn: PLT-001, KASA-14)
+  productId?: string;              // Bağlı ürün ID (varsa)
+  productName: string;             // Ürün Adı (örn: Fren Diski)
+  productCode?: string;            // Ürün Kodu (örn: FD-280)
+  quantity: number;                // Paletteki Adet (örn: 48, 50)
+  netWeightKg: number;             // Tartılan Net Ağırlık (kg, örn: 812.5)
+  grossWeightKg?: number;          // Brüt Ağırlık (kg)
+  dimensions?: string;             // Ölçü / Ebat (örn: 80x120 cm, 100x120 cm, Sandık)
+  location?: string;               // Depo Konumu (örn: A-1, Döküm Saha)
+  status: PalletStatus;            // 'in_stock' (Depoda) | 'dispatched' (Sevk Edildi)
+  entryDate: string;               // Depoya Giriş / Tartım Tarihi (YYYY-MM-DD)
+  dispatchDate?: string;           // Sevk Tarihi (YYYY-MM-DD)
+  destination?: string;            // Sevk Edilen Müşteri / Firma
+  documentNo?: string;             // İrsaliye No
+  notes?: string;                  // Özel Notlar
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppSettings {
   furnaces: Furnace[];
   tags: string[];
@@ -227,6 +250,7 @@ export interface AppSettings {
   monthlyTargetKg?: number; // Aylık üretim hedefi (kg) — Kontrol Paneli ilerleme çubuğu
   /** @deprecated monthlyTargetTons kaldırıldı, monthlyTargetKg kullanın */
   monthlyTargetTons?: number;
-  stockItems?: StockItem[];        // Kayıtlı ürün stokları
+  stockItems?: StockItem[];        // Kayıtlı ürün modelleri
   stockMovements?: StockMovement[]; // Sevkiyat ve stok hareketleri geçmişi
+  stockPallets?: StockPallet[];    // Tekil palet kayıtları (numaralı, ağırlıklı, ölçülü)
 }
