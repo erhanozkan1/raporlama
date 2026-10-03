@@ -30,7 +30,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ShieldCheck,
-  BarChart4
+  BarChart4,
+  Package
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -47,10 +48,13 @@ const AuditLogView = dynamic(() => import('@/components/AuditLogView'), {
 const AnalyticsView = dynamic(() => import('@/components/AnalyticsView'), {
   loading: () => <PageSkeleton title="Gelişmiş Analitik" />,
 });
+const StockView = dynamic(() => import('@/components/StockView'), {
+  loading: () => <PageSkeleton title="Ürün Stok & Sevkiyat" />,
+});
 
-type NavTab = 'dashboard' | 'new-report' | 'history' | 'furnaces' | 'settings' | 'users' | 'audit-logs' | 'analytics';
+type NavTab = 'dashboard' | 'new-report' | 'history' | 'furnaces' | 'stock' | 'settings' | 'users' | 'audit-logs' | 'analytics';
 
-const VALID_TABS: NavTab[] = ['dashboard', 'new-report', 'history', 'furnaces', 'settings', 'users', 'audit-logs', 'analytics'];
+const VALID_TABS: NavTab[] = ['dashboard', 'new-report', 'history', 'furnaces', 'stock', 'settings', 'users', 'audit-logs', 'analytics'];
 
 export default function FoundryApp() {
   const {
@@ -422,6 +426,7 @@ export default function FoundryApp() {
       case 'dashboard': return 'Kontrol Paneli';
       case 'new-report': return 'Yeni Rapor';
       case 'history': return 'Geçmiş Raporlar';
+      case 'stock': return 'Ürün Stok & Sevkiyat';
       case 'furnaces': return 'Ocaklar & Fırınlar';
       case 'analytics': return 'Gelişmiş Analitik';
       case 'settings': return 'Sistem Ayarları';
@@ -660,6 +665,14 @@ export default function FoundryApp() {
             settings={settings}
           />
         );
+      case 'stock':
+        return (
+          <StockView
+            settings={settings}
+            onUpdateSettings={handleSaveAllSettings}
+            userRole={currentUser?.role}
+          />
+        );
       case 'furnaces':
         return (
           <FurnacesView 
@@ -793,6 +806,22 @@ export default function FoundryApp() {
             >
               <History className="w-4 h-4 shrink-0" />
               {!sidebarCollapsed && <span>Geçmiş Raporlar</span>}
+            </button>
+
+            <button
+              onClick={() => navigateToTab('stock')}
+              id="nav-btn-stock"
+              title={sidebarCollapsed ? 'Ürün Stok & Sevkiyat' : undefined}
+              className={`w-full p-3 rounded-xl text-xs font-bold flex items-center gap-3 transition-all duration-150 relative ${
+                sidebarCollapsed ? 'justify-center' : ''
+              } ${
+                activeTab === 'stock'
+                  ? 'bg-amber-50 text-amber-700 nav-active-indicator'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Package className="w-4 h-4 shrink-0" />
+              {!sidebarCollapsed && <span>Ürün Stok & Sevkiyat</span>}
             </button>
 
             <button
@@ -1145,7 +1174,7 @@ export default function FoundryApp() {
           <button
             onClick={() => setMobileMoreOpen(!mobileMoreOpen)}
             className={`flex flex-col items-center justify-center flex-1 h-full py-1 tap-bounce transition ${
-              ['analytics', 'settings', 'users', 'audit-logs'].includes(activeTab) || mobileMoreOpen
+              ['stock', 'analytics', 'settings', 'users', 'audit-logs'].includes(activeTab) || mobileMoreOpen
                 ? 'text-amber-400'
                 : 'text-slate-400 hover:text-white'
             }`}
@@ -1180,6 +1209,16 @@ export default function FoundryApp() {
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  onClick={() => navigateToTab('stock')}
+                  className={`p-3.5 rounded-2xl border text-left flex flex-col gap-2 transition ${
+                    activeTab === 'stock' ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-slate-50 border-slate-100 text-slate-700'
+                  }`}
+                >
+                  <Package className="w-5 h-5 text-amber-600" />
+                  <span className="text-xs font-bold">Stok & Sevkiyat</span>
+                </button>
+
                 <button
                   onClick={() => navigateToTab('analytics')}
                   className={`p-3.5 rounded-2xl border text-left flex flex-col gap-2 transition ${
@@ -1298,6 +1337,16 @@ export default function FoundryApp() {
                   >
                     <History className="w-4 h-4" />
                     Geçmiş Raporlar
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab('stock'); setMobileMenuOpen(false); }}
+                    className={`w-full px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-3 transition relative ${
+                      activeTab === 'stock' ? 'bg-amber-50 text-amber-700 nav-active-indicator' : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Package className="w-4 h-4" />
+                    Ürün Stok & Sevkiyat
                   </button>
 
                   <button

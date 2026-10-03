@@ -183,6 +183,42 @@ export interface DailyReport {
   synced?: boolean;
 }
 
+export interface StockItem {
+  id: string;
+  productName: string;          // Ürün Adı (örn: Fren Diski)
+  productCode?: string;         // Ürün Kodu (örn: FD-280)
+  palletStandardQty: number;    // 1 Paletteki Standart Adet (örn: 50)
+  palletWeightKg: number;       // 1 Paletin Ortalama Ağırlığı (kg, örn: 800)
+  unitWeightKg: number;         // 1 Adet Parça Ağırlığı (kg, örn: 16)
+  currentPallets: number;       // Mevcut Tam Palet Sayısı
+  currentLooseQty: number;      // Açık / Tekil Kalan Adet
+  totalUnits: number;           // Toplam Adet (currentPallets * palletStandardQty + currentLooseQty)
+  totalWeightKg: number;        // Toplam Ağırlık (kg)
+  minStockPallets?: number;     // Kritik Stok Eşiği (Palet)
+  location?: string;            // Depo / Saha Konumu (örn: A Blok 2. Sıra)
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type StockMovementType = 'in' | 'out'; // in: Stok Girişi, out: Sevkiyat / Çıkış
+
+export interface StockMovement {
+  id: string;
+  productId: string;            // İlgili ürün ID
+  productName: string;          // Ürün Adı
+  type: StockMovementType;      // 'in' | 'out'
+  date: string;                 // Sevkiyat / Hareket Tarihi (YYYY-MM-DD)
+  pallets: number;              // Çıkış / Giriş Yapılan Palet Sayısı
+  quantity: number;             // Toplam Adet
+  weightKg: number;             // Toplam Ağırlık (kg)
+  destination?: string;         // Sevkiyat Yapılan Müşteri / Firma (Çıkışlarda)
+  documentNo?: string;          // İrsaliye / Fatura / Sevkiyat No
+  note?: string;                // Açıklama / Not
+  operator?: string;            // İşlemi Yapan / Onaylayan
+  createdAt: string;
+}
+
 export interface AppSettings {
   furnaces: Furnace[];
   tags: string[];
@@ -191,4 +227,6 @@ export interface AppSettings {
   monthlyTargetKg?: number; // Aylık üretim hedefi (kg) — Kontrol Paneli ilerleme çubuğu
   /** @deprecated monthlyTargetTons kaldırıldı, monthlyTargetKg kullanın */
   monthlyTargetTons?: number;
+  stockItems?: StockItem[];        // Kayıtlı ürün stokları
+  stockMovements?: StockMovement[]; // Sevkiyat ve stok hareketleri geçmişi
 }
