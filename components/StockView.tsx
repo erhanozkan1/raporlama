@@ -526,41 +526,71 @@ export default function StockView({ settings, onUpdateSettings, onLogAction }: S
       {/* ─── SEKMELER VE FİLTRELEME ÇUBUĞU ─── */}
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
         {/* Sekme Butonları */}
-        <div className="flex bg-slate-100 p-1 rounded-xl overflow-x-auto">
+        <div className="flex bg-slate-100/90 p-1.5 rounded-2xl overflow-x-auto gap-1.5 w-full lg:w-auto scrollbar-none">
           <button
             onClick={() => setActiveTab('pallets')}
-            className={`min-h-[40px] px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+            className={`min-h-[44px] flex-1 sm:flex-initial shrink-0 justify-center px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'pallets' 
-                ? 'bg-white text-slate-900 shadow-xs' 
-                : 'text-slate-500 hover:text-slate-800'
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
             }`}
           >
-            <Layers className="w-4 h-4 text-amber-500" />
-            Palet Envanteri ({stockPallets.filter(p => p.status === 'in_stock').length} Palet)
+            <Layers className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>
+              <span className="hidden sm:inline">Palet Envanteri</span>
+              <span className="sm:hidden">Paletler</span>
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold shrink-0 transition-colors ${
+              activeTab === 'pallets'
+                ? 'bg-amber-100 text-amber-900'
+                : 'bg-slate-200/80 text-slate-600'
+            }`}>
+              {stockPallets.filter(p => p.status === 'in_stock').length}
+            </span>
           </button>
           
           <button
             onClick={() => setActiveTab('summary')}
-            className={`min-h-[40px] px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+            className={`min-h-[44px] flex-1 sm:flex-initial shrink-0 justify-center px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'summary' 
-                ? 'bg-white text-slate-900 shadow-xs' 
-                : 'text-slate-500 hover:text-slate-800'
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
             }`}
           >
-            <Package className="w-4 h-4 text-blue-500" />
-            Ürün Bazlı Özet ({groupedProducts.length})
+            <Package className="w-4 h-4 text-blue-500 shrink-0" />
+            <span>
+              <span className="hidden sm:inline">Ürün Bazlı Özet</span>
+              <span className="sm:hidden">Ürünler</span>
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold shrink-0 transition-colors ${
+              activeTab === 'summary'
+                ? 'bg-blue-100 text-blue-900'
+                : 'bg-slate-200/80 text-slate-600'
+            }`}>
+              {groupedProducts.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveTab('movements')}
-            className={`min-h-[40px] px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+            className={`min-h-[44px] flex-1 sm:flex-initial shrink-0 justify-center px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'movements' 
-                ? 'bg-white text-slate-900 shadow-xs' 
-                : 'text-slate-500 hover:text-slate-800'
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
             }`}
           >
-            <Truck className="w-4 h-4 text-emerald-600" />
-            Sevkiyat Geçmişi ({stockMovements.length})
+            <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>
+              <span className="hidden sm:inline">Sevkiyat Geçmişi</span>
+              <span className="sm:hidden">Sevkiyat</span>
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold shrink-0 transition-colors ${
+              activeTab === 'movements'
+                ? 'bg-emerald-100 text-emerald-900'
+                : 'bg-slate-200/80 text-slate-600'
+            }`}>
+              {stockMovements.length}
+            </span>
           </button>
         </div>
 
