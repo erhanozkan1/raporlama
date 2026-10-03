@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Flame, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -59,13 +58,13 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-zinc-900 to-slate-950" />
       
       {/* Ambient Light Effects */}
-      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-amber-500/8 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-orange-600/6 rounded-full blur-3xl" style={{ animationDelay: '1s' }} />
-      <div className="absolute top-[30%] right-[20%] w-[300px] h-[300px] bg-amber-400/5 rounded-full blur-3xl" />
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-amber-500/8 rounded-full blur-3xl animate-pulse pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-orange-600/6 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-[30%] right-[20%] w-[300px] h-[300px] bg-amber-400/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Subtle Grid Pattern */}
       <div 
-        className="absolute inset-0 opacity-[0.03]"
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{ 
           backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
           backgroundSize: '60px 60px'
@@ -73,28 +72,18 @@ export default function LoginPage() {
       />
 
       {/* Login Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-md"
-      >
+      <div className="relative z-10 w-full max-w-md transition-all duration-500 ease-out transform">
         {/* Glass Card */}
-        <motion.div
-          animate={shake ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-          transition={{ duration: 0.5 }}
-          className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl shadow-black/30 p-8 sm:p-10 space-y-8"
+        <div
+          className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl shadow-black/30 p-8 sm:p-10 space-y-8 transition-transform duration-300 ${
+            shake ? 'translate-x-2' : ''
+          }`}
         >
           {/* Logo & Header */}
           <div className="text-center space-y-4">
-            <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
-              className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20 pulse-glow"
-            >
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20 pulse-glow transform hover:scale-105 transition-transform duration-200">
               <Flame className="w-8 h-8 text-white" />
-            </motion.div>
+            </div>
 
             <div>
               <h1 className="text-2xl font-bold text-white font-display tracking-tight">
@@ -154,25 +143,18 @@ export default function LoginPage() {
             </div>
 
             {/* Error Message */}
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: 'auto' }}
-                  exit={{ opacity: 0, y: -8, height: 0 }}
-                  className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-semibold"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  {error}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {error && (
+              <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-semibold animate-in fade-in slide-in-from-top-2 duration-200">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {error}
+              </div>
+            )}
 
             {/* Login Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {loading ? (
                 <>
@@ -194,20 +176,15 @@ export default function LoginPage() {
               Döküm Operasyon Takip Sistemi v2.0 — Tüm hakları saklıdır.
             </p>
           </div>
-        </motion.div>
+        </div>
 
         {/* Alt bilgi */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-6 text-center"
-        >
+        <div className="mt-6 text-center">
           <p className="text-xs text-zinc-600">
             Erişim bilgileriniz için sistem yöneticinizle iletişime geçin.
           </p>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </div>
   );
 }
