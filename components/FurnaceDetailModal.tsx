@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Furnace, FurnaceStatus, MaintenanceRecord, MaintenanceType } from '@/lib/types';
 import { 
   X, Flame, Wrench, CheckCircle, ShieldAlert, Calendar, Clock,
   Plus, Save, Trash2, AlertTriangle, Gauge, Activity, History,
-  Fuel, Zap, Info, FileText, DollarSign, User
+  Fuel, Zap, Info, FileText, DollarSign, User, Edit3, Check
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -22,6 +22,22 @@ export default function FurnaceDetailModal({ furnace, onClose, onUpdateFurnace }
   
   // Maintenance form state
   const [showAddMaintenance, setShowAddMaintenance] = useState(false);
+  const [confirmLiningReset, setConfirmLiningReset] = useState(false);
+  const [showLiningEdit, setShowLiningEdit] = useState(false);
+  const [liningEditForm, setLiningEditForm] = useState({
+    liningLastReplaced: furnace.liningLastReplaced || '',
+    liningChargeCount: furnace.liningChargeCount || 0,
+    liningLifeMax: furnace.liningLifeMax || 150,
+  });
+
+  useEffect(() => {
+    setLiningEditForm({
+      liningLastReplaced: furnace.liningLastReplaced || '',
+      liningChargeCount: furnace.liningChargeCount || 0,
+      liningLifeMax: furnace.liningLifeMax || 150,
+    });
+  }, [furnace]);
+
   const [maintForm, setMaintForm] = useState<Partial<MaintenanceRecord>>({
     date: new Date().toISOString().split('T')[0],
     type: 'Bakım',
@@ -75,6 +91,12 @@ export default function FurnaceDetailModal({ furnace, onClose, onUpdateFurnace }
   const addMaintenanceRecord = () => {
     if (!maintForm.description?.trim()) return;
 
+    const isLiningReplacement = maintForm.type === 'Astar Değişimi';
+    if (isLiningReplacement && !confirmLiningReset) {
+      alert('⚠️ Refrakter astar sayacını sıfırlamak için lütfen onay kutusunu işaretleyin veya rutin kontrol/onarımlar için bakım türünü "Bakım" olarak seçin.');
+      return;
+    }
+
     const newRecord: MaintenanceRecord = {
       id: `maint-${Date.now()}`,
       date: maintForm.date || new Date().toISOString().split('T')[0],
@@ -93,14 +115,15 @@ export default function FurnaceDetailModal({ furnace, onClose, onUpdateFurnace }
       lastMaintenanceDate: newRecord.date,
     };
 
-    // If it's a lining replacement, reset the lining counter
-    if (newRecord.type === 'Astar Değişimi') {
+    // SADECE kullanıcı açıkça onaylayarak Yeni Astar Değişimi kaydettiğinde sayaç sıfırlanır
+    if (isLiningReplacement && confirmLiningReset) {
       updatedFurnace.liningChargeCount = 0;
       updatedFurnace.liningLastReplaced = newRecord.date;
     }
 
     onUpdateFurnace(updatedFurnace);
     setShowAddMaintenance(false);
+    setConfirmLiningReset(false);
     setMaintForm({
       date: new Date().toISOString().split('T')[0],
       type: 'Bakım',
@@ -111,12 +134,36 @@ export default function FurnaceDetailModal({ furnace, onClose, onUpdateFurnace }
     });
   };
 
+  const handleSaveLiningDetails = () => {
+    const updated: Furnace = {
+      ...furnace,
+      liningLastReplaced: liningEditForm.liningLastReplaced || furnace.liningLastReplaced,
+      liningChargeCount: Math.max(0, Number(liningEditForm.liningChargeCount) || 0),
+      liningLifeMax: Math.max(1, Number(liningEditForm.liningLifeMax) || furnace.liningLifeMax || 150),
+    };
+    onUpdateFurnace(updated);
+    setShowLiningEdit(false);
+  };
+
   const deleteMaintenanceRecord = (recordId: string) => {
+    const deletedRecord = (furnace.maintenanceHistory || []).find(m => m.id === recordId);
     const updatedHistory = (furnace.maintenanceHistory || []).filter(m => m.id !== recordId);
-    onUpdateFurnace({
+    const updatedFurnace: Furnace = {
       ...furnace,
       maintenanceHistory: updatedHistory,
-    });
+    };
+
+    // Eğer silinen kayıt Astar Değişimi ise, son astar tarihini geçmişteki bir önceki kayda ayarla
+    if (deletedRecord?.type === 'Astar Değişimi' && furnace.liningLastReplaced === deletedRecord.date) {
+      const remainingLining = updatedHistory
+        .filter(m => m.type === 'Astar Değişimi' && m.date)
+        .sort((a, b) => b.date.localeCompare(a.date));
+      if (remainingLining.length > 0) {
+        updatedFurnace.liningLastReplaced = remainingLining[0].date;
+      }
+    }
+
+    onUpdateFurnace(updatedFurnace);
   };
 
   const statusConfig = getStatusConfig(furnace.status);
@@ -373,16 +420,45 @@ export default function FurnaceDetailModal({ furnace, onClose, onUpdateFurnace }
                       <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Tür</label>
                       <select
                         value={maintForm.type || 'Bakım'}
-                        onChange={(e) => setMaintForm({ ...maintForm, type: e.target.value as MaintenanceType })}
+                        onChange={(e) => {
+                          const val = e.target.value as MaintenanceType;
+                          setMaintForm({ ...maintForm, type: val });
+                          if (val !== 'Astar Değişimi') setConfirmLiningReset(false);
+                        }}
                         className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500/40 text-gray-900"
                       >
-                        <option value="Bakım">Bakım</option>
-                        <option value="Arıza Onarımı">Arıza Onarımı</option>
-                        <option value="Astar Değişimi">Astar Değişimi</option>
-                        <option value="Genel Revizyon">Genel Revizyon</option>
+                        <option value="Bakım">Periyodik / Genel Bakım (Sayacı Sıfırlamaz)</option>
+                        <option value="Arıza Onarımı">Arıza Onarımı (Sayacı Sıfırlamaz)</option>
+                        <option value="Genel Revizyon">Genel Revizyon (Sayacı Sıfırlamaz)</option>
+                        <option value="Astar Değişimi">Yeni Astar / Refrakter Yapımı (Sayacı Sıfırlar)</option>
                       </select>
                     </div>
                   </div>
+
+                  {maintForm.type === 'Astar Değişimi' && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold block">Refrakter / Astar Sıfırlama Uyarısı</span>
+                          <span className="text-[11px] text-red-600">
+                            Bu seçeneği yalnızca ocağa <strong>gerçekten yeni bir refrakter/astar örüldüğünde</strong> seçiniz.
+                            Kayıt eklendiğinde astar şarj sayacı sıfırlanacak ve bu tarih yeni başlangıç kabul edilecektir.
+                            Rutin astar kontrolleri, sinterleme veya yamalar için lütfen yukarıdan <strong>&quot;Periyodik / Genel Bakım&quot;</strong> seçiniz.
+                          </span>
+                        </div>
+                      </div>
+                      <label className="flex items-center gap-2 pt-1 font-bold text-red-800 cursor-pointer text-xs">
+                        <input
+                          type="checkbox"
+                          checked={confirmLiningReset}
+                          onChange={(e) => setConfirmLiningReset(e.target.checked)}
+                          className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                        />
+                        <span>Yeni refrakter yapıldığını ve astar sayacının sıfırlanmasını onaylıyorum</span>
+                      </label>
+                    </div>
+                  )}
 
                   <div>
                     <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Açıklama</label>
@@ -552,6 +628,18 @@ export default function FurnaceDetailModal({ furnace, onClose, onUpdateFurnace }
                 </div>
               </div>
 
+              {/* Refrakter Güvence Bilgilendirme Notu */}
+              <div className="p-3.5 bg-blue-50 border border-blue-100 rounded-2xl flex items-start gap-3">
+                <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-blue-900 block">Refrakter Şarj Sayacı Güvencesi</span>
+                  <p className="text-[11px] text-blue-700 leading-relaxed">
+                    Ocak bakıma girse, arızalansa veya kullanım dışı kalsa bile sayaç <strong>kesinlikle sıfırlanmaz</strong>. 
+                    Mevcut astar şarj sayacı korunur ve yeni bir refrakter/astar operasyonu onaylanana kadar döküm şarjları eklenmeye devam eder.
+                  </p>
+                </div>
+              </div>
+
               {/* Warnings */}
               {liningPercent >= 80 && (
                 <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3">
@@ -560,7 +648,7 @@ export default function FurnaceDetailModal({ furnace, onClose, onUpdateFurnace }
                     <h4 className="text-sm font-bold text-red-700 ">Kritik Uyarı: Astar Değişimi Gerekli!</h4>
                     <p className="text-xs text-red-600 mt-1 leading-relaxed">
                       Astar ömrü %{liningPercent} seviyesine ulaşmıştır. Güvenli döküm operasyonu için en kısa sürede astar değişimi planlanmalıdır. 
-                      Astar değişimi bakım kaydı eklendiğinde sayaç otomatik olarak sıfırlanır.
+                      Yalnızca yeni astar yapıldığında onay verilerek sayaç sıfırlanmalıdır.
                     </p>
                   </div>
                 </div>
@@ -577,16 +665,77 @@ export default function FurnaceDetailModal({ furnace, onClose, onUpdateFurnace }
                 </div>
               )}
 
-              {/* Lining History */}
-              {furnace.liningLastReplaced && (
-                <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center gap-3">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  <div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase block">Son Astar Değişim Tarihi</span>
-                    <span className="text-sm font-bold text-gray-700 ">{new Date(furnace.liningLastReplaced).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                  </div>
+              {/* Refractory Details & Manual Edit Panel */}
+              <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-800">Refrakter Başlangıç ve Sayaç Bilgileri</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowLiningEdit(!showLiningEdit)}
+                    className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 transition"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    {showLiningEdit ? 'İptal' : 'Bilgileri Düzenle'}
+                  </button>
                 </div>
-              )}
+
+                {showLiningEdit ? (
+                  <div className="space-y-3 pt-2 border-t border-gray-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Son Astar Tarihi</label>
+                        <input
+                          type="date"
+                          value={liningEditForm.liningLastReplaced}
+                          onChange={(e) => setLiningEditForm({ ...liningEditForm, liningLastReplaced: e.target.value })}
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none text-gray-900 focus:ring-1 focus:ring-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Mevcut Şarj Sayacı</label>
+                        <input
+                          type="number"
+                          value={liningEditForm.liningChargeCount}
+                          onChange={(e) => setLiningEditForm({ ...liningEditForm, liningChargeCount: parseInt(e.target.value) || 0 })}
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none text-gray-900 focus:ring-1 focus:ring-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Maks. Astar Ömrü (Şarj)</label>
+                        <input
+                          type="number"
+                          value={liningEditForm.liningLifeMax}
+                          onChange={(e) => setLiningEditForm({ ...liningEditForm, liningLifeMax: parseInt(e.target.value) || 0 })}
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none text-gray-900 focus:ring-1 focus:ring-amber-500"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveLiningDetails}
+                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      Astar Bilgilerini Kaydet
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                    <div>
+                      <span className="text-gray-400 block text-[10px] uppercase font-bold">Son Refrakter Tarihi</span>
+                      <span className="font-bold text-gray-800">
+                        {furnace.liningLastReplaced ? new Date(furnace.liningLastReplaced).toLocaleDateString('tr-TR') : 'Belirtilmedi'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 block text-[10px] uppercase font-bold">Mevcut Sayaç Durumu</span>
+                      <span className="font-bold font-mono text-gray-800">
+                        {furnace.liningChargeCount || 0} / {furnace.liningLifeMax || 150} şarj
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

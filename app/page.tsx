@@ -13,6 +13,7 @@ import ToastContainer, { ToastMessage } from '@/components/ui/Toast';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { DashboardSkeleton, PageSkeleton } from '@/components/ui/Skeleton';
 import { generateSystemNotifications, AppNotification } from '@/lib/notifications';
+import { syncAllFurnaceLiningCharges } from '@/lib/refractoryService';
 import {
   Flame,
   LayoutDashboard,
@@ -453,22 +454,17 @@ export default function FoundryApp() {
       return result;
     }
 
-    // Astar ömrü otomasyonu: girilen şarj sayısı farkını ocak astar sayaçlarına yansıt.
-    // Rapor güncelleniyorsa yalnızca fark eklenir (çift sayım olmaz).
+    // Refrakter/Astar ömrü senkronizasyonu:
+    // Her ocağın son astar yenileme tarihinden (liningLastReplaced) sonraki tüm şarjlarını toplayarak
+    // hatasız senkronize eder. Ocak bakıma girse veya kullanım dışı kalsa bile yeni astar yapılana kadar
+    // sayaç ASLA sıfırlanmaz!
     if (settings) {
-      let liningChanged = false;
-      const updatedFurnaces = settings.furnaces.map((f) => {
-        const newRec = report.furnaceRecords.find((fr) => fr.furnaceId === f.id);
-        if (!newRec) return f;
-        const oldCount = existing?.furnaceRecords.find((fr) => fr.furnaceId === f.id)?.chargeCount || 0;
-        const delta = (newRec.chargeCount || 0) - oldCount;
-        if (delta === 0) return f;
-        liningChanged = true;
-        return { ...f, liningChargeCount: Math.max(0, (f.liningChargeCount || 0) + delta) };
-      });
-      if (liningChanged) {
-        await saveSettings({ ...settings, furnaces: updatedFurnaces });
-      }
+      const allReportsForSync = [
+        ...reports.filter(r => r.id !== report.id && r.date !== report.date),
+        report
+      ];
+      const updatedFurnaces = syncAllFurnaceLiningCharges(settings.furnaces, allReportsForSync);
+      await saveSettings({ ...settings, furnaces: updatedFurnaces });
     }
 
     navigateToTab('history');
@@ -509,6 +505,13 @@ export default function FoundryApp() {
       return;
     }
 
+    // Silme sonrası refrakter sayaçlarını senkronize et
+    if (settings) {
+      const remainingReports = reports.filter(r => r.id !== idToDelete && r.date !== idToDelete);
+      const updatedFurnaces = syncAllFurnaceLiningCharges(settings.furnaces, remainingReports);
+      await saveSettings({ ...settings, furnaces: updatedFurnaces });
+    }
+
     addToast('success', 'Rapor Silindi', `${dateLabel} tarihli rapor sistemden kalıcı olarak silindi.`);
     logAuditAction(
       'RAPOR_SİL',
@@ -534,6 +537,11 @@ export default function FoundryApp() {
           ...f, 
           status,
           statusHistory: [...prevHistory, newHistoryEntry],
+          // Ocak bakıma, arızaya veya kullanım dışına alınsa veya aktifleştirilse bile refrakter verileri ASLA sıfırlanmaz
+          liningChargeCount: f.liningChargeCount,
+          liningLastReplaced: f.liningLastReplaced,
+          liningLifeMax: f.liningLifeMax,
+          maintenanceHistory: f.maintenanceHistory,
         };
       }
       return f;
