@@ -9,15 +9,37 @@ export type EventType = 'production' | 'failure' | 'maintenance' | 'shipping' | 
 export type UserRole = 'superadmin' | 'admin' | 'operator';
 
 export type AuditAction = 
+  | 'GİRİŞ_BAŞARILI'
+  | 'GİRİŞ_BAŞARISIZ'
+  | 'ÇIKIŞ_YAPILDI'
   | 'RAPOR_EKLE' 
   | 'RAPOR_GÜNCELLE' 
   | 'RAPOR_SİL' 
+  | 'RAPOR_İNDİR_PDF'
+  | 'RAPOR_İNDİR_EXCEL'
   | 'OCAK_DURUM_GÜNCELLE' 
   | 'OCAK_DÜZENLE' 
+  | 'ASTAR_YENİLEME'
+  | 'PALET_EKLE'
+  | 'PALET_GÜNCELLE'
+  | 'PALET_SİL'
+  | 'PALET_SEVKİYAT'
+  | 'SEVKİYAT_SİL'
   | 'KULLANICI_EKLE' 
   | 'KULLANICI_GÜNCELLE' 
   | 'KULLANICI_SİL' 
-  | 'AYARLAR_GÜNCELLE';
+  | 'AYARLAR_GÜNCELLE'
+  | 'VERİ_YEDEKLEME';
+
+export type AuditCategory = 
+  | 'Oturum & Güvenlik'
+  | 'Üretim Raporu'
+  | 'Stok & Sevkiyat'
+  | 'Ocaklar & Fırınlar'
+  | 'Kullanıcı Yönetimi'
+  | 'Sistem Ayarları';
+
+export type AuditSeverity = 'info' | 'warning' | 'error' | 'success';
 
 export interface AuditLog {
   id: string;
@@ -28,6 +50,10 @@ export interface AuditLog {
   action: AuditAction;
   resourceName: string;
   summary: string;
+  category?: AuditCategory;
+  severity?: AuditSeverity;
+  ipAddress?: string;
+  userAgent?: string;
   beforeData?: any;
   afterData?: any;
 }

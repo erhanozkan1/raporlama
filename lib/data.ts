@@ -288,11 +288,15 @@ interface SupabaseAuditRow {
   action: string;
   resource_name: string | null;
   summary: string | null;
+  category?: string | null;
+  severity?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
   before_data: unknown;
   after_data: unknown;
 }
 
-export async function getAuditLogs(limit = 300): Promise<AuditLog[]> {
+export async function getAuditLogs(limit = 500): Promise<AuditLog[]> {
   if (!hasSupabase) {
     throw new Error('Yerel denetim kaydı devre dışı: Supabase bağlantısı zorunludur.');
   }
@@ -304,6 +308,7 @@ export async function getAuditLogs(limit = 300): Promise<AuditLog[]> {
   if (error) throw error;
   return (data || []).map((r) => {
     const row = r as SupabaseAuditRow;
+    const meta = (row.after_data as any)?._meta || {};
     return {
       id: row.id,
       timestamp: row.ts,
@@ -313,6 +318,10 @@ export async function getAuditLogs(limit = 300): Promise<AuditLog[]> {
       action: row.action as AuditLog['action'],
       resourceName: row.resource_name || '',
       summary: row.summary || '',
+      category: (row.category || meta.category || 'Sistem Ayarları') as any,
+      severity: (row.severity || meta.severity || 'info') as any,
+      ipAddress: row.ip_address || meta.ipAddress || undefined,
+      userAgent: row.user_agent || meta.userAgent || undefined,
       beforeData: row.before_data ?? undefined,
       afterData: row.after_data ?? undefined,
     };
@@ -323,7 +332,9 @@ export async function addAuditLog(log: AuditLog): Promise<void> {
   if (!hasSupabase) {
     throw new Error('Yerel denetim kaydı devre dışı: Supabase bağlantısı zorunludur.');
   }
-  const { error } = await getSupabase().from('audit_logs').insert({
+
+  const supabase = getSupabase();
+  const payloadFull = {
     id: log.id,
     ts: log.timestamp,
     user_id: log.userId,
@@ -332,8 +343,40 @@ export async function addAuditLog(log: AuditLog): Promise<void> {
     action: log.action,
     resource_name: log.resourceName,
     summary: log.summary,
+    category: log.category || null,
+    severity: log.severity || 'info',
+    ip_address: log.ipAddress || null,
+    user_agent: log.userAgent || null,
     before_data: log.beforeData ?? null,
     after_data: log.afterData ?? null,
-  });
-  if (error) throw error;
+  };
+
+  // Yeni sütunlarla eklemeyi dene
+  const { error } = await supabase.from('audit_logs').insert(payloadFull);
+  if (error) {
+    // Sütunlar henüz SQL ile eklenmemişse eski şema ile meta veriyi after_data içinde sakla
+    const fallbackAfterData = {
+      ...(typeof log.afterData === 'object' && log.afterData !== null ? log.afterData : { original: log.afterData }),
+      _meta: {
+        category: log.category,
+        severity: log.severity,
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent,
+      },
+    };
+
+    const { error: fallbackError } = await supabase.from('audit_logs').insert({
+      id: log.id,
+      ts: log.timestamp,
+      user_id: log.userId,
+      user_name: log.userName,
+      user_role: log.userRole,
+      action: log.action,
+      resource_name: log.resourceName,
+      summary: log.summary,
+      before_data: log.beforeData ?? null,
+      after_data: fallbackAfterData,
+    });
+    if (fallbackError) throw fallbackError;
+  }
 }

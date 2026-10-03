@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { StockPallet, StockItem, StockMovement, AppSettings, UserRole, PalletStatus } from '@/lib/types';
+import { StockPallet, StockItem, StockMovement, AppSettings, UserRole, PalletStatus, AuditAction } from '@/lib/types';
 import { generateNextPalletNumber } from '@/lib/stockService';
 import { 
   Package, 
@@ -35,9 +35,10 @@ interface StockViewProps {
   settings: AppSettings | null;
   onUpdateSettings: (newSettings: AppSettings) => void;
   userRole?: UserRole;
+  onLogAction?: (action: AuditAction, resourceName: string, summary: string, beforeData?: any, afterData?: any) => void;
 }
 
-export default function StockView({ settings, onUpdateSettings }: StockViewProps) {
+export default function StockView({ settings, onUpdateSettings, onLogAction }: StockViewProps) {
   // Aktif Sekme: 'pallets' (Tekil Palet Envanteri) | 'summary' (Ürün Bazlı Özet) | 'movements' (Sevkiyat Geçmişi)
   const [activeTab, setActiveTab] = useState<'pallets' | 'summary' | 'movements'>('pallets');
   
@@ -288,6 +289,14 @@ export default function StockView({ settings, onUpdateSettings }: StockViewProps
       stockPallets: updatedPallets,
     });
 
+    onLogAction?.(
+      'PALET_EKLE',
+      newPallet.palletNumber,
+      `${newPallet.palletNumber} numaralı yeni palet (${newPallet.productName}, ${newPallet.netWeightKg} kg, ${newPallet.quantity} adet) tartılarak depoya eklendi.`,
+      null,
+      newPallet
+    );
+
     if (andKeepOpen) {
       // Seri tartım: sonraki palet no oluşturup aynı ürünle beklet
       const nextNumber = generateNextPalletNumber(updatedPallets);
@@ -331,6 +340,14 @@ export default function StockView({ settings, onUpdateSettings }: StockViewProps
       stockPallets: updatedList,
     });
 
+    onLogAction?.(
+      'PALET_GÜNCELLE',
+      updatedPallet.palletNumber,
+      `${updatedPallet.palletNumber} numaralı paletin verileri güncellendi (Kilo: ${updatedPallet.netWeightKg} kg, Adet: ${updatedPallet.quantity}, Ölçü: ${updatedPallet.dimensions}).`,
+      editingPallet,
+      updatedPallet
+    );
+
     setEditingPallet(null);
   };
 
@@ -342,6 +359,15 @@ export default function StockView({ settings, onUpdateSettings }: StockViewProps
       ...(settings || { furnaces: [], tags: [], shifts: [] }),
       stockPallets: updated,
     });
+
+    onLogAction?.(
+      'PALET_SİL',
+      deletingPallet.palletNumber,
+      `${deletingPallet.palletNumber} numaralı (${deletingPallet.productName}, ${deletingPallet.netWeightKg} kg) palet stoktan silindi.`,
+      deletingPallet,
+      null
+    );
+
     setDeletingPallet(null);
   };
 
@@ -395,6 +421,14 @@ export default function StockView({ settings, onUpdateSettings }: StockViewProps
       stockMovements: [newMovement, ...stockMovements],
     });
 
+    onLogAction?.(
+      'PALET_SEVKİYAT',
+      updatedPallet.palletNumber,
+      `${updatedPallet.palletNumber} nolu palet (${updatedPallet.productName}, ${updatedPallet.netWeightKg} kg) ${dispatchForm.destination} firmasına sevk edildi (İrsaliye: ${dispatchForm.documentNo || '-'}).`,
+      dispatchingPallet,
+      newMovement
+    );
+
     setDispatchingPallet(null);
   };
 
@@ -406,6 +440,15 @@ export default function StockView({ settings, onUpdateSettings }: StockViewProps
       ...(settings || { furnaces: [], tags: [], shifts: [] }),
       stockMovements: updated,
     });
+
+    onLogAction?.(
+      'SEVKİYAT_SİL',
+      deletingMovement.productName,
+      `${deletingMovement.productName} sevkiyat kaydı (${deletingMovement.pallets} palet, ${deletingMovement.weightKg} kg) silindi.`,
+      deletingMovement,
+      null
+    );
+
     setDeletingMovement(null);
   };
 

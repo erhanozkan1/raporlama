@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useSyncState } from '@/hooks/useSyncState';
-import { AppSettings, DailyReport, Furnace, FurnaceStatus, User, SafeUser, UserRole, AuditLog, AuditAction } from '@/lib/types';
+import { AppSettings, DailyReport, Furnace, FurnaceStatus, User, SafeUser, UserRole, AuditLog, AuditAction, AuditCategory, AuditSeverity } from '@/lib/types';
 import DashboardView from '@/components/DashboardView';
 import ReportFormView from '@/components/ReportFormView';
 import FurnacesView from '@/components/FurnacesView';
@@ -212,6 +212,44 @@ export default function FoundryApp() {
   // Audit Logs State (sunucudan yüklenir, kalıcıdır)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
+  const getActionMetadata = (action: AuditAction): { category: AuditCategory; severity: AuditSeverity } => {
+    switch (action) {
+      case 'GİRİŞ_BAŞARILI':
+        return { category: 'Oturum & Güvenlik', severity: 'success' };
+      case 'GİRİŞ_BAŞARISIZ':
+        return { category: 'Oturum & Güvenlik', severity: 'warning' };
+      case 'ÇIKIŞ_YAPILDI':
+        return { category: 'Oturum & Güvenlik', severity: 'info' };
+      case 'RAPOR_EKLE':
+      case 'RAPOR_GÜNCELLE':
+      case 'RAPOR_İNDİR_PDF':
+      case 'RAPOR_İNDİR_EXCEL':
+        return { category: 'Üretim Raporu', severity: 'info' };
+      case 'RAPOR_SİL':
+        return { category: 'Üretim Raporu', severity: 'warning' };
+      case 'PALET_EKLE':
+      case 'PALET_GÜNCELLE':
+      case 'PALET_SEVKİYAT':
+        return { category: 'Stok & Sevkiyat', severity: 'info' };
+      case 'PALET_SİL':
+      case 'SEVKİYAT_SİL':
+        return { category: 'Stok & Sevkiyat', severity: 'warning' };
+      case 'OCAK_DURUM_GÜNCELLE':
+      case 'OCAK_DÜZENLE':
+      case 'ASTAR_YENİLEME':
+        return { category: 'Ocaklar & Fırınlar', severity: 'info' };
+      case 'KULLANICI_EKLE':
+      case 'KULLANICI_GÜNCELLE':
+        return { category: 'Kullanıcı Yönetimi', severity: 'info' };
+      case 'KULLANICI_SİL':
+        return { category: 'Kullanıcı Yönetimi', severity: 'warning' };
+      case 'AYARLAR_GÜNCELLE':
+      case 'VERİ_YEDEKLEME':
+      default:
+        return { category: 'Sistem Ayarları', severity: 'info' };
+    }
+  };
+
   const logAuditAction = (
     action: AuditAction,
     resourceName: string,
@@ -219,8 +257,9 @@ export default function FoundryApp() {
     beforeData?: any,
     afterData?: any
   ) => {
+    const meta = getActionMetadata(action);
     const newLog: AuditLog = {
-      id: `log-${Date.now()}-${Math.random()}`,
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       timestamp: new Date().toISOString(),
       userId: currentUser?.id || 'system',
       userName: currentUser?.name || 'Erhan Özkan',
@@ -228,6 +267,8 @@ export default function FoundryApp() {
       action,
       resourceName,
       summary,
+      category: meta.category,
+      severity: meta.severity,
       beforeData,
       afterData,
     };
@@ -401,6 +442,11 @@ export default function FoundryApp() {
   };
 
   const handleLogout = async () => {
+    logAuditAction(
+      'ÇIKIŞ_YAPILDI',
+      'Oturum',
+      `${currentUser?.name || 'Kullanıcı'} sistemden güvenli çıkış yaptı.`
+    );
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch {}
@@ -671,6 +717,7 @@ export default function FoundryApp() {
             settings={settings}
             onUpdateSettings={handleSaveAllSettings}
             userRole={currentUser?.role}
+            onLogAction={logAuditAction}
           />
         );
       case 'furnaces':

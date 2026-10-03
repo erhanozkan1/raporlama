@@ -140,3 +140,31 @@ values (1, '{
   "monthlyTargetTons": 50
 }'::jsonb)
 on conflict (id) do nothing;
+
+-- 4. Audit Logs (Denetim İzi) Tablosu
+create table if not exists audit_logs (
+    id text primary key,
+    ts timestamptz not null default now(),
+    user_id text,
+    user_name text,
+    user_role text,
+    action text not null,
+    resource_name text,
+    summary text,
+    category text,
+    severity text default 'info',
+    ip_address text,
+    user_agent text,
+    before_data jsonb,
+    after_data jsonb
+);
+
+create index if not exists idx_audit_logs_ts on audit_logs (ts desc);
+create index if not exists idx_audit_logs_action on audit_logs (action);
+create index if not exists idx_audit_logs_category on audit_logs (category);
+create index if not exists idx_audit_logs_user_id on audit_logs (user_id);
+
+alter table audit_logs enable row level security;
+drop policy if exists "Allow all for audit_logs" on audit_logs;
+create policy "Allow all for audit_logs" on audit_logs for all using (true) with check (true);
+

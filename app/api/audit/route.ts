@@ -34,12 +34,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Eksik kayıt bilgisi' }, { status: 400 });
     }
 
-    // Kimlik bilgilerini istemciden değil oturumdan al (sahte kayıt önlenir)
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                      req.headers.get('x-real-ip') || 
+                      '127.0.0.1';
+    const userAgent = req.headers.get('user-agent') || 'Bilinmeyen Cihaz';
+
+    // Kimlik ve ortam bilgilerini istemciden değil güvenli oturumdan al (sahte kayıt önlenir)
     const secured: AuditLog = {
       ...log,
       userId: session.userId,
       userName: session.name,
       userRole: session.role,
+      ipAddress: log.ipAddress || ipAddress,
+      userAgent: log.userAgent || userAgent,
       timestamp: log.timestamp || new Date().toISOString(),
     };
 
