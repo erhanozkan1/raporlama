@@ -50,6 +50,8 @@ export default function StockView({ settings, onUpdateSettings, userRole }: Stoc
   const [showStockInModal, setShowStockInModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<StockItem | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<StockItem | null>(null);
+  const [deletingMovement, setDeletingMovement] = useState<StockMovement | null>(null);
+  const [showClearAllModal, setShowClearAllModal] = useState(false);
   const [quickDispatchProduct, setQuickDispatchProduct] = useState<StockItem | null>(null);
 
   // Form states - New Product
@@ -93,16 +95,19 @@ export default function StockView({ settings, onUpdateSettings, userRole }: Stoc
   // Form states - Edit Product
   const [editProductForm, setEditProductForm] = useState<Partial<StockItem>>({});
 
-  // Mevcut ürünler ve hareketler (yoksa varsayılan örneklerle başlat)
+  // Mevcut ürünler ve hareketler (silindiğinde asla geri gelmez)
   const stockItems: StockItem[] = useMemo(() => {
-    if (settings?.stockItems && settings.stockItems.length > 0) {
+    if (Array.isArray(settings?.stockItems)) {
       return settings.stockItems;
     }
-    return getDefaultStockItems();
+    return [];
   }, [settings?.stockItems]);
 
   const stockMovements: StockMovement[] = useMemo(() => {
-    return settings?.stockMovements || [];
+    if (Array.isArray(settings?.stockMovements)) {
+      return settings.stockMovements;
+    }
+    return [];
   }, [settings?.stockMovements]);
 
   // Özet İstatistikler
@@ -258,7 +263,7 @@ export default function StockView({ settings, onUpdateSettings, userRole }: Stoc
     setEditingProduct(null);
   };
 
-  // Ürün Sil
+  // Ürün Sil (Tekil)
   const handleConfirmDeleteProduct = () => {
     if (!deletingProduct) return;
     const updated = stockItems.filter(i => i.id !== deletingProduct.id);
@@ -267,6 +272,35 @@ export default function StockView({ settings, onUpdateSettings, userRole }: Stoc
       stockItems: updated,
     });
     setDeletingProduct(null);
+  };
+
+  // Tüm Ürünleri Temizle
+  const handleConfirmClearAllProducts = () => {
+    onUpdateSettings({
+      ...(settings || { furnaces: [], tags: [], shifts: [] }),
+      stockItems: [],
+    });
+    setShowClearAllModal(false);
+  };
+
+  // Sevkiyat / Hareket Sil
+  const handleConfirmDeleteMovement = () => {
+    if (!deletingMovement) return;
+    const updated = stockMovements.filter(m => m.id !== deletingMovement.id);
+    onUpdateSettings({
+      ...(settings || { furnaces: [], tags: [], shifts: [] }),
+      stockMovements: updated,
+    });
+    setDeletingMovement(null);
+  };
+
+  // İsteğe bağlı demo/örnek ürünleri yükle
+  const handleLoadSampleProducts = () => {
+    const samples = getDefaultStockItems();
+    onUpdateSettings({
+      ...(settings || { furnaces: [], tags: [], shifts: [] }),
+      stockItems: samples,
+    });
   };
 
   // Sevkiyat / Çıkış Gerçekleştir
@@ -446,6 +480,16 @@ export default function StockView({ settings, onUpdateSettings, userRole }: Stoc
             <Plus className="w-4 h-4" />
             Yeni Ürün Tanımla
           </button>
+          {stockItems.length > 0 && (
+            <button
+              onClick={() => setShowClearAllModal(true)}
+              className="min-h-[44px] px-3 py-2.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 border border-slate-200"
+              title="Tüm Stok Listesini Temizle"
+            >
+              <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-600" />
+              <span className="hidden xl:inline">Tümünü Temizle</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -535,13 +579,21 @@ export default function StockView({ settings, onUpdateSettings, userRole }: Stoc
               <Boxes className="w-12 h-12 text-slate-300 mx-auto" />
               <p className="text-sm font-bold text-slate-700">Kayıtlı ürün bulunamadı</p>
               <p className="text-xs text-slate-400">Üretimini yaptığınız döküm parçalarını palet ve adet bazında takip etmek için ürün tanımlayın.</p>
-              <button
-                onClick={() => setShowAddProductModal(true)}
-                className="mt-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                İlk Ürünü Ekle
-              </button>
+              <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
+                <button
+                  onClick={() => setShowAddProductModal(true)}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 active:scale-95 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  İlk Ürünü Ekle
+                </button>
+                <button
+                  onClick={handleLoadSampleProducts}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 active:scale-95 transition"
+                >
+                  Örnek Ürünleri Yükle
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -750,6 +802,7 @@ export default function StockView({ settings, onUpdateSettings, userRole }: Stoc
                       <th className="py-3.5 px-4">Müşteri / Alıcı</th>
                       <th className="py-3.5 px-4">İrsaliye / Belge</th>
                       <th className="py-3.5 px-4">Açıklama</th>
+                      <th className="py-3.5 px-4 text-center">İşlem</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
@@ -794,6 +847,15 @@ export default function StockView({ settings, onUpdateSettings, userRole }: Stoc
                           </td>
                           <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">
                             {mov.note || '-'}
+                          </td>
+                          <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                            <button
+                              onClick={() => setDeletingMovement(mov)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                              title="Kaydı Sil"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </td>
                         </tr>
                       );
@@ -1405,7 +1467,7 @@ export default function StockView({ settings, onUpdateSettings, userRole }: Stoc
         )}
       </AnimatePresence>
 
-      {/* ─── CONFIRM DELETE DIALOG ─── */}
+      {/* ─── CONFIRM DELETE PRODUCT DIALOG ─── */}
       <ConfirmDialog
         isOpen={!!deletingProduct}
         title="Ürünü Sil"
@@ -1415,6 +1477,30 @@ export default function StockView({ settings, onUpdateSettings, userRole }: Stoc
         isDanger={true}
         onConfirm={handleConfirmDeleteProduct}
         onCancel={() => setDeletingProduct(null)}
+      />
+
+      {/* ─── CONFIRM DELETE MOVEMENT DIALOG ─── */}
+      <ConfirmDialog
+        isOpen={!!deletingMovement}
+        title="Sevkiyat Kaydını Sil"
+        message={`"${deletingMovement?.productName}" ürününe ait ${deletingMovement?.pallets} paletlik (${deletingMovement?.weightKg} kg) sevkiyat/hareket kaydını silmek istediğinize emin misiniz?`}
+        confirmLabel="Evet, Sil"
+        cancelLabel="Vazgeç"
+        isDanger={true}
+        onConfirm={handleConfirmDeleteMovement}
+        onCancel={() => setDeletingMovement(null)}
+      />
+
+      {/* ─── CONFIRM CLEAR ALL PRODUCTS DIALOG ─── */}
+      <ConfirmDialog
+        isOpen={showClearAllModal}
+        title="Tüm Stok Kayıtlarını Temizle"
+        message="Mevcut tüm stoklu ürün modellerini ve kayıtlarını listeden kaldırmak istediğinize emin misiniz? Bu işlem geri alınamaz."
+        confirmLabel="Evet, Tümünü Temizle"
+        cancelLabel="Vazgeç"
+        isDanger={true}
+        onConfirm={handleConfirmClearAllProducts}
+        onCancel={() => setShowClearAllModal(false)}
       />
 
     </div>
