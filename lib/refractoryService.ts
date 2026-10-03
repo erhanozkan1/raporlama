@@ -37,9 +37,9 @@ export function calculateFurnaceLiningCharges(furnace: Furnace, reports: DailyRe
 
   let totalCharges = 0;
   for (const rep of reports) {
-    // Sadece son refrakter tarihinden SONRAKİ dökümleri say
-    if (rep.date > lastDate) {
-      const rec = (rep.furnaceRecords || []).find(r => r.furnaceId === furnace.id);
+    // Son refrakter yenileme tarihinden itibaren (değişim/devreye alma günü dahil) yapılan tüm şarjları say
+    if (rep.date >= lastDate) {
+      const rec = (rep.furnaceRecords || []).find(r => r.furnaceId === furnace.id || r.name === furnace.name);
       if (rec && typeof rec.chargeCount === 'number' && rec.chargeCount > 0) {
         totalCharges += rec.chargeCount;
       }

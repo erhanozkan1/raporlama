@@ -303,10 +303,16 @@ export default function FoundryApp() {
       .catch(() => {});
   }, [currentUser]);
 
+  // Rapor verileriyle anlık ve tam senkronize fırın listesi & refrakter sayaçları
+  const activeFurnaces = React.useMemo(() => {
+    if (!settings?.furnaces) return [];
+    return syncAllFurnaceLiningCharges(settings.furnaces, reports);
+  }, [settings?.furnaces, reports]);
+
   // Generate system notifications on data change
   useEffect(() => {
     const generated = generateSystemNotifications(
-      settings?.furnaces || [],
+      activeFurnaces,
       reports,
       pendingSyncCount
     );
@@ -676,7 +682,7 @@ export default function FoundryApp() {
         return (
           <DashboardView
             reports={reports}
-            furnaces={settings?.furnaces || []}
+            furnaces={activeFurnaces}
             monthlyTargetKg={settings?.monthlyTargetKg ?? (settings?.monthlyTargetTons ? settings.monthlyTargetTons * 1000 : undefined)}
             onNavigateToReport={handleEditReport}
             onNewReport={handleNewReport}
@@ -723,7 +729,7 @@ export default function FoundryApp() {
       case 'furnaces':
         return (
           <FurnacesView 
-            furnaces={settings?.furnaces || []}
+            furnaces={activeFurnaces}
             onUpdateStatus={handleUpdateFurnaceStatus}
             onUpdateFurnace={handleUpdateFurnace}
             onNavigateToSettings={() => navigateToTab('settings')}
